@@ -1,0 +1,25 @@
+name: BicepPublish-$(BuildDefinitionName)-$(Date:yyyyMMdd)-$(Build.BuildId)
+
+pool:
+  name: Azure Pipelines # Default hosted pipeline name
+  vmImage: "windows-latest"
+
+trigger: none
+
+pr: none
+
+variables:
+  - name: serviceConnectionName
+    value: myServiceConnection
+
+steps:
+  - task: AzurePowerShell@5
+    displayName: "bicep module publish"
+    inputs:
+      azureSubscription: ${{serviceConnectionName}}
+      pwsh: true
+      azurePowerShellVersion: LatestVersion
+      ScriptType: FilePath
+      ScriptPath: /path/to/bolt.ps1
+      ScriptArguments: >
+        -whatif
