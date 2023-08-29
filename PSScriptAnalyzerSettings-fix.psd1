@@ -1,0 +1,6 @@
+@{
+    Severity     = @('Warning')
+    IncludRules = @(
+        "PSAvoidUsingCmdletAliases"
+    )
+}

@@ -6,7 +6,7 @@ function Get-BoltScriptFile {
         [string]$Type
     )
     
-    $scripts = Get-ChildItem "$PSScriptRoot/src" -Recurse -Filter "*.ps1" -File
+    $scripts = Get-ChildItem "$PSScriptRoot/src/code" -Recurse -Filter "*.ps1" -File
     $scripts = $scripts | Where-Object { $_.Directory.name -ne "_ignore"}
     switch($Type)
     {
@@ -32,7 +32,7 @@ $ScriptDependencies = [ordered]@{
 
 #easiest way to make sure classes are always loaded first
 foreach ($item in $ScriptDependencies.GetEnumerator()) {
-    Write-Verbose "importing $($item.key)"
+    Write-Host "importing $($item.key)..."
     foreach ($_importscript in $item.value) {
         Write-Host "importing $($_importscript)"
         . $_importscript.FullName

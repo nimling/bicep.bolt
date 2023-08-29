@@ -1,0 +1,4 @@
+#bolt in root
+*.test.ps1
+/.dev/bolt.json
+.biceptemp

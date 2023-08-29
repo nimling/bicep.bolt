@@ -1,0 +1,29 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        // {
+        //     "label": "psake",
+        //     "type": "shell",
+        //     "command": "invoke-psake",
+        //     "options": {
+        //         "cwd": "${workspaceFolder}"
+        //     },
+        //     "problemMatcher": []
+        // },
+        // {
+        //     "label": "psake-test",
+        //     "type": "shell",
+        //     "command": "ipmo PSScriptAnalyzer,psake; invoke-psake -TaskList Test",
+        //     "options": {
+        //         "cwd": "${workspaceFolder}"
+        //     },
+        //     "problemMatcher": [],
+        //     "runOptions": {
+        //         "instanceLimit": 1
+        //     }
+        // },
+
+    ]
+}

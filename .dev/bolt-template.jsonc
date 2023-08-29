@@ -1,0 +1,61 @@
+{
+  // copy this file to same folder as 'bolt.json'
+  "$schema": "./../bolt.schema.json",
+  "bicepVersion": "0.14.0",
+  "registry": {
+    "name": "name",
+    "subscriptionId": "subscriptionId",
+    "tenantId": "mytenant.com"
+  },
+  "module": {
+    "folder": "folder",
+    "organisationStyle": {
+      "type": "SingleModuleFolder",
+      "filter": "*",
+      "exclude": ""
+    }
+  },
+  "publish": {
+    "releaseTrigger": {
+      "static": {
+        "update": [
+          "moduleModified"
+        ]
+      },
+      "semantic": {
+        "major": [
+          "paramCaseModified",
+          "paramAddedWithoutDefaultValue",
+          "paramRemoved",
+          "paramTypeModified",
+          "paramAllowedValueModified",
+          "paramDefaultValueModified"
+        ],
+        "minor": [
+          "resourceAdded",
+          "resourceTypeModified",
+          "resourceApiVersionModified",
+          "resourcePropertiesAdded",
+          "resourcePropertiesRemoved",
+          "resourcePropertiesModified"
+        ],
+        "patch": [
+          "moduleModified"
+        ]
+      }
+    },
+    "defaultRelease": "defaultRelease",
+    "releases": [
+      {
+        "name": "dev",
+        "trigger": "static",
+        "value": "beta-latest"
+      },
+      {
+        "name": "dev",
+        "trigger": "semantic",
+        "prefix": "beta-"
+      }
+    ]
+  }
+}

@@ -47,18 +47,18 @@ function Get-ScriptRegions {
     New-Variable astTokens -force
     New-Variable astErr -force
     
-    [System.Management.Automation.Language.Parser]::ParseInput(($Main -join "`n"), [ref]$astTokens, [ref]$astErr) | out-null
+    [System.Management.Automation.Language.Parser]::ParseInput($ScriptContent, [ref]$astTokens, [ref]$astErr) | out-null
     $insideRegion = $false
-    $astTokens | Where-Object { $_.kind -eq 'comment' } | ForEach-Object {
-        $comment = $_.text
+    foreach ($token in $astTokens | Where-Object { $_.kind -eq 'comment' }) {
+        $comment = $token.text
         # Write-Host  $comment
         if (!$insideRegion -and $comment -match "region\s+$RegionName") {
             # Write-host $($_|convertto-json -Depth 1 -Compress)
             $region = [ScriptRegion]::new()
-            $region.start = $_.Extent.StartLineNumber
+            $region.start = $token.Extent.StartLineNumber
             $insideRegion = $true
         }if ($insideRegion -and $comment -like "*#endregion*") {
-            $region.end = $_.Extent.EndLineNumber
+            $region.end = $token.Extent.EndLineNumber
             Write-Verbose "Found region $regionname`: $($region.start) - $($region.end)"
             Write-Output $region
             $insideRegion = $false
@@ -252,11 +252,11 @@ function Join-Url {
     }
     
     process {
-        if($parent -like "*/"){
+        if ($parent -like "*/") {
             $parent.Substring(0, $parent.Length - 1)
         }
 
-        if($child -like "*/"){
+        if ($child -like "*/") {
             $child.Substring(1, $child.Length - 1)
         }
     }
@@ -265,4 +265,172 @@ function Join-Url {
         
     }
 }
+
+
+function New-JsonSchemaDoc {
+    [CmdletBinding()]
+    param (
+        [parameter(
+            ParameterSetName = 'SchemaFile',
+            Mandatory = $true
+        )]
+        [FileInfo]$Schema,
+
+        [parameter(
+            ParameterSetName = 'SchemaItem'
+        )]
+        [NJsonSchema.JsonSchema]$SchemaItem,
+
+        [parameter(
+            ParameterSetName = 'SchemaFile'
+        )]
+        [string]$Title,
+
+        [parameter(
+            ParameterSetName = 'SchemaItem',
+            Mandatory = $true
+        )]
+        [String]$Address = "",
+
+        [parameter(
+            ParameterSetName = 'SchemaFile'
+        )]
+        [Fileinfo]$OutFile,
+
+        [parameter(
+            ParameterSetName = 'SchemaItem'
+        )]
+        [int]$TitleLevel = 1
+    )
+    begin {
+        if ($PSCmdlet.ParameterSetName -eq 'SchemaFile') {
+            $Import = [NJsonSchema.JsonSchema]::FromFileAsync($Schema.FullName)
+            $SchemaItem = $Import.Result
+            if (!$Title) {
+                $Title = $Schema.basename
+            }
+            if (!$OutFile) {
+                $OutFile = join-path $Schema.Directory "$($Schema.basename).md"
+            }
+        }
+    }
+    process {
+        if($title)
+        {
+            Write-Verbose "Processing Title: $Title"
+        }
+        else{
+            $title = $Address
+            Write-Verbose "Processing address: $Address, type: $($SchemaItem.Type)"
+        }
+
+        $Markdown = @(
+            ('#' * $TitleLevel) + " " + $Title
+            ""
+            "type: ``{0}``  " -f $SchemaItem.Type
+        )
+        if ($SchemaItem.Description) {
+            $Markdown += $SchemaItem.Description + "  "
+        }
+
+        switch ($SchemaItem.Type) {
+            { "object", "array" -eq $_ } {
+                # Write-Verbose "Processing '$address', Type: $_"
+                $Typ = $_ -eq "object"? "Properties" : "Accepted Values"
+                $Markdown += ""
+                $Markdown += "**$Typ**", ""
+                $Table = @()
+                $enumerator = @()
+                if($_ -eq "object"){
+                    $enumerator = $SchemaItem.Properties.GetEnumerator()
+                }
+                elseif($_ -eq "array" -and $SchemaItem.item){
+                    $coll = [System.Collections.Generic.Dictionary[string,NJsonSchema.JsonSchema]]::new() #ICollection[NJsonSchema.JsonSchema]]::new(1)
+                    $coll.Add("item", $SchemaItem.item)
+                    $enumerator= $coll.GetEnumerator()
+                }
+                elseif($_ -eq "array")
+                {
+                    $coll = [System.Collections.Generic.Dictionary[string,NJsonSchema.JsonSchema]]::new() #ICollection[NJsonSchema.JsonSchema]]::new(1)
+                    # $coll.Add("item", $SchemaItem.item)
+                    $SchemaItem.items.ForEach{
+                        $coll.Add("item", $_)
+                    }
+                    $enumerator= $coll.GetEnumerator()
+                }
+
+                foreach ($Item in $enumerator) {
+                    $val = $item.value.ActualSchema
+                    $ItemName = $null -eq $val.name ? $item.Key : $val.name
+                    $ThisAddress = ($Address, $ItemName | ? { $_ }) -join "."
+                    $Limitations = @{
+                        pattern = $val.pattern
+                        minimum = $val.minimum
+                        maximum = $val.maximum
+                        minLength = $val.minLength
+                        maxLength = $val.maxLength
+                        minItems = $val.minItems
+                        maxItems = $val.maxItems
+                        minProperties = $val.minProperties
+                        maxProperties = $val.maxProperties
+                        enum = ($val.Enumeration -join ", ")
+                        format = $val.format
+                    }.GetEnumerator() | Where-Object { $_.value } | ForEach-Object { "$($_.key): ``$($_.value)``" }
+                    # $LimitationMap
+                    if(!$val.Type)
+                    {
+                        Throw "Type is missing for $ThisAddress"
+                    }
+                    $Table += @{
+                        Name        = $ItemName
+                        Required    = $val.IsRequired? "Yes" : "No"
+                        Type        = $val.type
+                        Description = $val.description
+                        Link        = $val.type -in @("object", "array")? "[Link](#$ThisAddress)" : ""
+                        Limitation  = $Limitations -join "<br />"
+                        _SchemaItem = $val
+                        _Address = $ThisAddress
+                    }
+                }
+
+                $Markdown += "| Name |Required| Type | Description |Link |Limitation|"
+                $Markdown += "|--|--|--|--|--|--|"
+                $Table | ForEach-Object {
+                    $Markdown += "| $($_.Name) | $($_.Required) | $($_.Type) | $($_.Description) | $($_.Link) | $($_.Limitation) |"
+                }
+                if($SchemaItem.ExtensionData.examples){
+                    $Markdown += "**Example**", ""
+                    $Markdown += "``````json"
+                    $Markdown += $SchemaItem.ExtensionData.examples|ConvertTo-Json -Depth 10
+                    $Markdown += "``````", ""
+                }
+                $Markdown += "","-----",""
+                
+                $Table|?{$_.type -in @("object", "array")} | ForEach-Object {
+                    Write-Verbose "Calling $($_.name)"
+                    $Markdown += New-JsonSchemaDoc -SchemaItem $_._SchemaItem -Address $_._Address -TitleLevel ($TitleLevel + 1)
+                }
+                
+            }
+            default {
+                Write-Verbose "ignore $($address), type $_"
+                Write-Verbose ($SchemaItem|ConvertTo-Json -Depth 10 -Compress)
+            }
+        }
+    }
+    end {
+        if($PSCmdlet.ParameterSetName -eq 'SchemaFile')
+        {
+            $Markdown += "","-----",""
+            $Markdown += "This markdown was automactially generated from the schema file. it may not be 100% correct. please "
+            $Markdown|out-file $OutFile -Encoding utf8 -Force
+        }
+        else{
+            $Markdown
+        }
+    }
+}
+
+
+
 # New-JsonFromSchema -Schema 'C:\git\nim\bicep-toolbox\badu\schema\deployconfig.schema.json' -OutputPath 'C:\git\nim\bicep-toolbox\badu\starterpack\deployconfig.json' -Size minimal -Verbose -ReferenceSchemaPath './deployconfig.schema.json'
