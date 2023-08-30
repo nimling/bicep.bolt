@@ -89,7 +89,7 @@ properties {
         version      = (get-date).tostring("0.2.yyMMdd")
         folder       = "$PSScriptRoot/starterpack"
         template     = "$PSScriptRoot/template"
-        make_zip = $true
+        make_zip     = $true
         import_items = @{
             docs = "$PSScriptRoot/docs"
         }
@@ -110,7 +110,10 @@ properties {
             generate_docs                = $true
             #title of the documentation. if not set, it will use basename of docs_name
             docs_title                   = "Bolt"
-            docs_file_name                    = "bolt-schema.md"
+            docs_file_name               = "bolt-schema.md"
+
+            #if defined, will will also save the documentation to this path (good to update project docs)
+            docs_added_save_locations = "$PSScriptRoot/docs"
         }
     }
 }
@@ -420,8 +423,8 @@ task collect_main {
 
 
 #region target
-task make_target -depends init_target,copy_items, generate_schema_example, generate_target, generate_json_schema_doc, compress_starterpack
-task copy_items -depends copy_template_to_target,copy_import_items_to_target,copy_schema_to_target
+task make_target -depends init_target, copy_items, generate_schema_example, generate_target, generate_json_schema_doc, compress_starterpack
+task copy_items -depends copy_template_to_target, copy_import_items_to_target, copy_schema_to_target
 
 
 task init_target {
@@ -497,20 +500,17 @@ task copy_import_items_to_target -precondition { $target.import_items } {
     start-sleep -Milliseconds 300
 }
 
+
 Task generate_json_schema_doc -precondition { (test-path $target.schema.path) -and ($target.schema.generate_docs) } -action {
     $targetFolder = $target.folder
-    if ($target.import_items.docs) {
-        $docsFolder = join-path $target.folder "docs"
-        if (!(test-path $docsFolder)) {
-            New-Item $docsFolder -ItemType Directory -Force
-            # $docsFolder.Create()
-        }
-        $targetFolder = $docsFolder.FullName
-    }
 
+    Write-Host "Generating json schema documentation"
     $TargetMd = join-path $targetFolder $target.schema.docs_file_name
     $Title = $target.schema.docs_title? $target.schema.docs_title : ([fileinfo]$target.schema.docs_file_name).BaseName
     New-JsonSchemaDoc -Schema $target.schema.path -Title $Title -OutFile $TargetMd
+    $target.schema.docs_added_save_locations|%{
+        Get-Item $TargetMd | Copy-Item -Destination $_ -Force
+    }
 }
 
 task generate_target {

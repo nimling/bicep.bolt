@@ -52,7 +52,7 @@ how modules are organised
 
 | Name |Required| Type | Description |Link |Limitation|
 |--|--|--|--|--|--|
-| type | Yes | String | the style of your module repository. SingleModuleFolder for a single module per folder (./mymodule/main.bicep) or MultiModuleFolder for multiple modules in a single folder (./mymodule.bicep) |  | enum: `SingleModuleFolder, MultiModuleFolder` |
+| type | Yes | String | the style of your module repository. SingleModuleFolder for a single module per folder (./mymodule/main.bicep) or MultiModuleFolder for multiple modules in a single folder (./mymodule.bicep) |  | enum: `SingleModuleFolder` |
 | filter | Yes | String | only deploy modules that match this filter. this is wildcard. if you have defined SingleModuleFolder type, this is used to define what that single module should be named. |  |  |
 | exclude | No | String | exclude modules that match this filter. this is wildcard. default is empty |  |  |
 
@@ -220,3 +220,7 @@ type: `Object`
 
 -----
 
+
+-----
+
+This markdown was automactially generated from the schema file. it may not be 100% correct. please 
