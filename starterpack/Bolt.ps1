@@ -1,9 +1,9 @@
-#BUILD 0.2.230825
+#BUILD 0.2.230829
 #region using
 using namespace system.collections.generic
 using namespace diagnostics.codeanalysis
-using namespace system.io
 using namespace system
+using namespace system.io
 using namespace system.management.automation
 #endregion using
 
@@ -50,7 +50,7 @@ param(
     [switch]$Dotsource
 )
 #region build
-$BuildId=0.2.230825
+$BuildId=0.2.230829
 #endregion build
 
 if ($whatifpreference -and !$Dotsource) {
@@ -157,6 +157,34 @@ class boltConfigPublish{
     [boltConfigReleaseTrigger] $releaseTrigger
     [string]$defaultRelease
     [boltConfigRelease[]]$releases
+}
+#endregion
+
+#region ..\.stage\code\config\config.class.ps1
+class boltConfig {
+    #weird thing to handle dollar sign in variable
+    [string]${$schema}
+    [string]$bicepVersion
+    [boltConfigRegistry]$registry
+    [boltConfigModule]$module
+    [boltConfigPublish]$publish
+
+    hidden [string]$configDirectory
+
+    [void]Validate()
+    {
+        Test-BoltConfigRegistry -Config $this.registry
+        Test-BicepInstallation -configVersion $this.bicepVersion
+        Test-BoltConfigReleaseTrigger -Triggers $this.publish.releaseTrigger
+    }
+
+    [void]SetConfigDirectory([string]$directory){
+        $this.configDirectory = $directory
+    }
+
+    [string]GetConfigDirectory(){
+        return $this.configDirectory
+    }
 }
 #endregion
 
@@ -270,6 +298,21 @@ enum ModuleUpdateType {
 }
 #endregion
 
+#region ..\.stage\code\bicep\BicepConfig.class.ps1
+class bicepConfig {
+    $analyzers
+    [string]$cacheRootDirectory
+    $cloud
+    $formatting
+    $moduleAliases
+    [hashtable]$experimentalFeaturesEnabled
+
+    [bool] symbolicNameCodegenEnabled(){
+        return ($this.experimentalFeaturesEnabled.symbolicNameCodegen -eq $true)
+    }
+}
+#endregion
+
 #region ..\.stage\code\versionControl\UpdateTest.model.class.ps1
 class ModuleUpdateReason {
     [string]$key
@@ -316,15 +359,6 @@ class ModuleUpdateReason {
 #endregion
 
 #region ..\.stage\code\config\config.class.ps1
-class boltConfigRelease {
-    [string]$name
-    [string]$trigger
-    [string]$value = ""
-    [string]$prefix = ""
-}
-#endregion
-
-#region ..\.stage\code\config\config.class.ps1
 class boltConfigRegistry {
     [string]$type = "acr"
 
@@ -355,30 +389,11 @@ enum bicepInstallType{
 #endregion
 
 #region ..\.stage\code\config\config.class.ps1
-class boltConfig {
-    #weird thing to handle dollar sign in variable
-    [string]${$schema}
-    [string]$bicepVersion
-    [boltConfigRegistry]$registry
-    [boltConfigModule]$module
-    [boltConfigPublish]$publish
-
-    hidden [string]$configDirectory
-
-    [void]Validate()
-    {
-        Test-BoltConfigRegistry -Config $this.registry
-        Test-BicepInstallation -configVersion $this.bicepVersion
-        Test-BoltConfigReleaseTrigger -Triggers $this.publish.releaseTrigger
-    }
-
-    [void]SetConfigDirectory([string]$directory){
-        $this.configDirectory = $directory
-    }
-
-    [string]GetConfigDirectory(){
-        return $this.configDirectory
-    }
+class boltConfigRelease {
+    [string]$name
+    [string]$trigger
+    [string]$value = ""
+    [string]$prefix = ""
 }
 #endregion
 
@@ -469,18 +484,49 @@ function Test-BoltTriggerOnResource {
     param (
         [hashtable]$LocalObject,
         [hashtable]$RemoteObject,
-        [string]$Rule
+        [string]$Rule,
+        [switch]$LogEverything
     )
-    New-BoltLogContext -command "resourceTest"
-    Write-BoltLog "RESOURCE RULE: $rule" -level 'dev'
-    # $JsonDepth = 2
-    # $ignorewarn = @{
-    #     WarningAction = "SilentlyContinue"
-    # }
+    New-BoltLogContext -command "resourceTest $rule"
+    # Write-BoltLog "RESOURCE RULE: $rule" -level 'dev'
+    
+    #because i dont know if either the remote or local template has been made with.
+    #bicepconfig.experimentalFeaturesEnabled.symbolicNameCodegen enabled, i have to check and convert the resources to the same format
+    $res = @{
+        _Local = $LocalObject.resources
+        _Remote = $RemoteObject.resources
+        localIsSymbolic = $LocalObject.resources -is [array]
+        remoteIsSymbolic = $RemoteObject.resources -is [array]
+        local = @{}
+        remote = @{}
+    }
+    $res.bothIsSymbolic = $res.localIsSymbolic -eq $res.remoteIsSymbolic
+
+    foreach($item in 'local','remote'){
+        $Temp = $res["_${item}"]
+        if($Temp -is [array]){
+            Write-BoltLog "$item template is not symbolic. converting to hashtable" -level 'verbose'
+            $Temp |ForEach-Object{
+                $resource = $_
+                $resourceBase = ($resource.type.split("/") | Select-Object -Skip 1) -join "/"
+                $Name = $resourceBase + "@" + $resource.apiVersion
+                if($res[$item].containskey($Name)){
+                    Write-BoltLog "resource with name $Name already exists in $item template. adding resource name to key" -level 'verbose'
+                    $Name = $Name + "_" + $resource.name
+                }
+                $res[$item][$Name] = $_
+            }
+        }
+        else{
+            $res[$item] = $temp
+        }
+    }
+    $localResources = $res.local
+    $remoteResources = $res.remote
 
     <#
     look..
-    checking resources is hard-ish. 
+    checking resources is hard-ish IF Bicepconfig.experimentalFeaturesEnabled.symbolicNameCodegen is not enabled:
     i cannot use the bicep-given name as a key, as they are not transferred to the ARM template,
     so i have to use the type and given name as a key. this might be a problem, as there might be 2 resources with the same type, but different names,
     so if one was removed, this would not be easily detected.
@@ -491,61 +537,83 @@ function Test-BoltTriggerOnResource {
     #check if resources have been removed
     if ($Rule -eq 'resourceRemoved') {
         # $foundresource = @()
-        :remoterec foreach ($remoteResource in $RemoteObject.resources) {
+        :remoterec foreach ($remoteResource in $remoteResources.GetEnumerator()) {
+            $remoteValue = $remoteResource.value
+            $remoteKey = $remoteResource.key
+            # $name = $remoteKey
+            # if($rec.remoteIsSymbolic -eq $false){
+            #     $name = "$($remoteValue.type)@$($remoteValue.apiVersion)"
+            # }
             #search by type and name first
-            $localResource = $LocalObject.resources | Where-Object { $_.type -eq $remoteResource.type -and $_.name -eq $remoteResource.name }
+            if($rec.bothIsSymbolic){
+                $localResource = $localResources[$remoteKey]
+            }
+            else{
+                $localResource = $localResources.GetEnumerator() | Where-Object { $_.value.type -eq $remoteValue.type -and $_.value.name -eq $remoteValue.name }
+            }
+            # $localResources
+            # $localResource = $LocalObject.resources | Where-Object { $_.type -eq $remoteResource.type -and $_.name -eq $remoteResource.name }
             if (@($localResource).count -gt 1) {
                 #you should never really get here, but if you do, you cannot test. multiple resource with same type and name? nah dude..
-                Write-BoltLog "multiple local resources found for $($remoteResource.name) of type $($remoteResource.type) in local template. cannot test" -level warning
+                Write-BoltLog "multiple local resources found for $($remoteKey) of type $($remoteValue.type) in local template. cannot test" -level warning
                 continue
             }
             #if the resource is there when searched for by name and type, continue
             elseif ($null -ne $localResource) {
                 continue :remoterec
             }
-
-            #TODO add a secondary search for only resource type. if there is only one resource of that type, then we can test
-            #if i still cannot find resource, search by only type (nae may have changed)
-            # $localResource = $LocalObject.resources|Where-Object{$_.type -eq $remoteResource.type}
-            # if(@($localResource).count -gt 1)
-            # {
-            #     Write-BoltLog "multiple local resources found for $($remoteResource.name) of type $($remoteResource.type) in local template. cannot test" -level warning
-            #     continue
-            # }
-            # if($LocalObject.resources|?{$_.type -eq $remoteResource.type})
-            # {
-                
-            # }
-            # Write-Output ([ModuleUpdateReason]::Removed("resource", $remoteResource.type + "@" + $remoteResource.apiVersion))
+            if($LogEverything){
+                Write-BoltLog "resource '$remotekey' not found on local template" -level 'dev'
+            }
+            Write-Output ([ModuleUpdateReason]::Removed('resource', $remoteKey))
         }
     }
 
     #check each existing resource agains the new resources
-    :reccheck Foreach ($localResource in $LocalObject.resources) {
+    :reccheck Foreach ($localResource in $localResources.GetEnumerator()) {
+        $localValue = $localResource.value
+        $localKey = $localResource.key
+        # $name = $localKey
+        # if($rec.localIsSymbolic -eq $false){
+        #     $name = "$($localValue.type)@$($localValue.apiVersion)"
+        # }
         #check if there are several resources with the same type and name in local.. this makes testing impossible
         # if (@($LocalObject.resources|where{$_.}).count -gt 1) {
         #     Write-BoltLog "multiple local resources found for $($localResource.name) of type $($localResource.type) in local template. cannot test" -level warning
         #     continue :reccheck
         # }
-        $resourceBase = ($localresource.type.split("/") | Select-Object -Skip 1) -join "/"
-        $resourceName = $resourceBase + "@" + $localresource.apiVersion
-        Write-BoltLog "checking resource: $resourceName" -level 'dev'
+        # $resourceBase = ($localresource.type.split("/") | Select-Object -Skip 1) -join "/"
+        # $resourceName = $resourceBase + "@" + $localresource.apiVersion
+        Write-BoltLog "checking resource:'$localKey'" -level 'dev'
 
-        $remoteResource = $RemoteObject.resources | Where-Object { $_.type -eq $localResource.type -and $_.name -eq $localResource.name }
+        if($rec.bothIsSymbolic){
+            $remoteValue = $remoteResources[$localKey]
+        }
+        else{
+            $remoteValues = $remoteResources.GetEnumerator() | Where-Object { $_.value.type -eq $localValue.type -and $_.value.name -eq $localValue.name }
+        }
+
+        # $remoteResource = $RemoteObject.resources | Where-Object { $_.type -eq $localResource.type -and $_.name -eq $localResource.name }
         # Write-BoltLog "count of remote resources: $(@($remoteResource).count)" -level 'dev'
-        if (@($remoteResource).count -gt 1) {
-            Write-BoltLog "multiple remote resources found for $($localResource.name) of type $($localResource.type) in remote template. cannot test" -level warning
+        if (@($remoteValues).count -gt 1) {
+            Write-BoltLog "multiple remote resources found for '$($localKey.name)' of type '$($localValue.type)' in remote template ($($remoteValue.key -join ", ")). cannot test" -level warning
             continue :reccheck
         }
 
-        if ($null -eq $remoteResource) {
+        if ($null -eq $remoteValues) {
+            if($logeverything){
+                Write-BoltLog "remote resource not found" -level 'dev'
+            }
             if ($rule -eq 'resourceAdded') {
-                Write-Output ([ModuleUpdateReason]::Added("resource", $resourceBase + "@" + $remoteResource.apiVersion))
+                Write-Output ([ModuleUpdateReason]::Added("resource", $localKey))
             }
 
             #no reason to check any more properties, since the remote resource is not there
             continue :reccheck
         }
+        $remoteValue = $remoteValues.value
+        $remoteKey = $remoteValues.key
+        Write-boltlog "'$localKey' remote resource: $remoteKey" -level 'dev'
 
 
         <#
@@ -556,44 +624,47 @@ function Test-BoltTriggerOnResource {
             "resourcePropertiesRemoved",
             "resourcePropertiesModified",
         #>
+
+
+        #generate a list of all properties for both resources
+        #make all properties of both resources into a array of key-value pairs, removing any properties that are objects or arrays
         $exclude = @(
             "`$schema"
-            "_generator"
+            "*_generator*"
+            "*_EXPERIMENTAL_WARNING"
         )
-        #generate a list of all properties for both resources
-        $localProperties = $localResource | Convert-HashtableToArray -ExcludeKeys $exclude -excludeTypes object,array
-        $remoteProperties = $remoteResource | Convert-HashtableToArray -ExcludeKeys $exclude -excludeTypes object,array
+        $localProperties = $localValue | Convert-HashtableToArray -ExcludeKeys $exclude -excludeTypes object,array
+        $remoteProperties = $remoteValue | Convert-HashtableToArray -ExcludeKeys $exclude -excludeTypes object,array
 
         switch ($Rule) {
             "resourceApiVersionModified" {
-                if ($localResource.apiVersion -ne $remoteResource.apiVersion) {
-                    Write-Output ([ModuleUpdateReason]::Modified($resourceName, $remoteResource.apiVersion, $localResource.apiVersion))
+                if ($localValue.apiVersion -ne $remoteValue.apiVersion) {
+                    Write-Output ([ModuleUpdateReason]::Modified($localKey, $remoteValue.apiVersion, $localValue.apiVersion))
                 }
             }
             "resourcePropertiesAdded" {
                 $localProperties.Keys | Where-Object { $_ -notin $remoteProperties.keys } | ForEach-Object {
-                    Write-Output ([ModuleUpdateReason]::Added("$resourceName", $_))
+                    Write-Output ([ModuleUpdateReason]::Added("$localKey", $_))
                 }
             }
             "resourcePropertiesRemoved" {
                 $remoteProperties.Keys | Where-Object { $_ -notin $localProperties.keys } | ForEach-Object {
-                    Write-Output ([ModuleUpdateReason]::Removed("$resourceName", $_))
+                    Write-Output ([ModuleUpdateReason]::Removed("$localKey", $_))
                 }
             }
             "resourcePropertiesModified" {
                 #where property exists in both resources, and is not a hashtable or array
-                $localProperties.GetEnumerator() |
-                Where-Object { $_.key -in $remoteProperties.keys } |
-                Where-Object { $_.value -isnot [hashtable] -and $_.value -isnot [array] } |
-                ForEach-Object {
-                    # $key = $_
+                $localProperties.GetEnumerator() | Where-Object { $_.key -in $remoteProperties.keys } | ForEach-Object {
+                    $key = $_.key
                     $localProp = $_.value
-                    $remoteProp = $remoteProperties[$_.key]
+                    $remoteProp = $remoteProperties[$key]
                     if (($localProp | ConvertTo-Json -Compress) -ne ($remoteProp | ConvertTo-Json -Compress)) {
-                        write-boltlog "property: $($_.key)" -level 'dev'
-                        Write-BoltLog "`tlocal property:  $localProp" -level 'dev'
-                        Write-BoltLog "`tremote property: $remoteProp" -level 'dev'
-                        Write-Output ([ModuleUpdateReason]::Modified($resourceName + "->" + $_.Key, $remoteProp, $localProp))
+                        if($LogEverything){
+                            write-boltlog "property: $localKey.$($key)" -level 'dev'
+                            Write-BoltLog "`t local property: $localProp" -level 'dev'
+                            Write-BoltLog "`tremote property: $remoteProp" -level 'dev'
+                        }
+                        Write-Output ([ModuleUpdateReason]::Modified("$localKey.$key", $remoteProp, $localProp))
                     }
                 }
             }
@@ -651,6 +722,20 @@ function Test-BicepShouldBuild {
 }
 #endregion
 
+#region ..\.stage\code\bicep\Get-BicepConfig.ps1
+function Get-BicepConfig {
+    [CmdletBinding()]
+    [OutputType([BicepConfig])]
+    param (
+        [string]$Path
+    )
+    
+    $ConfigFileName = "bicepconfig.json"
+    $configFile = Find-File -SearchFrom $path -FileName $ConfigFileName
+    return [BicepConfig](get-content $configFile.FullName | ConvertFrom-Json -AsHashtable)
+}
+#endregion
+
 #region ..\.stage\code\versionControl\releaseTests\Test-BoltTriggerOnOutput.ps1
 function Test-BoltTriggerOnOutput {
     [CmdletBinding()]
@@ -658,10 +743,11 @@ function Test-BoltTriggerOnOutput {
     param (
         [hashtable]$LocalObject,
         [hashtable]$RemoteObject,
-        [string]$Rule
+        [string]$Rule,
+        [switch]$LogEverything
     )
-    New-BoltLogContext -command "outputTest"
-    Write-BoltLog "OUTPUT RULE: $rule" -level 'dev'
+    New-BoltLogContext -command "outputTest $rule"
+    # Write-BoltLog "OUTPUT RULE: $rule" -level 'dev'
     <#
         "outputsAdded",
         "outputsRemoved",
@@ -689,6 +775,11 @@ function Test-BoltTriggerOnOutput {
             $remoteOutput = $RemoteOutputs[$localKey]|Convert-HashtableToArray -excludeTypes array,object
             foreach($out in $localOutput.keys){
                 if($localOutput[$out] -ne $remoteOutput[$out]){
+                    if($LogEverything){
+                        Write-BoltLog "output $localKey.$out has changed" -level 'dev'
+                        Write-BoltLog "local: $($localOutput[$out])" -level 'dev'
+                        Write-BoltLog "remote: $($remoteOutput[$out])" -level 'dev'
+                    }
                     $name = $localKey + "." + $out
                     Write-Output ([ModuleUpdateReason]::Modified($name, $remoteOutput[$out], $localOutput[$out]))
                     continue :outputsearch
@@ -696,6 +787,36 @@ function Test-BoltTriggerOnOutput {
             }
         }
     }
+}
+#endregion
+
+#region ..\.stage\code\helpers\Find-File.ps1
+function Find-File {
+    [CmdletBinding()]
+    [OutputType([System.IO.FileInfo])]
+    param (
+        $SearchFrom,
+        [string]$FileName
+    )
+    if((get-item $SearchFrom) -is [System.IO.FileInfo]){
+        Write-BoltLog "SearchFrom is a file, getting parent directory" -level verbose
+        $SearchFrom = split-path $SearchFrom -Parent
+    }
+    $SearchFrom = [System.IO.DirectoryInfo]$SearchFrom
+    $startsearchFrom = $SearchFrom
+    $ConfigPath = ""
+    while(!$ConfigPath) {
+        Write-BoltLog "searching for $FileName in $SearchFrom" -level verbose
+        $ConfigPath = (Get-ChildItem -Path $SearchFrom -Filter $FileName -ErrorAction SilentlyContinue|Select-Object -first 1).FullName
+        if([string]::IsNullOrEmpty($ConfigPath)) {
+            if($null -eq $SearchFrom.Parent) {
+                throw "Could not find $FileName in $startsearchFrom or any parent directory (stopped at $SearchFrom)"
+            }
+            $SearchFrom = $SearchFrom.Parent
+        }
+    }
+    Write-BoltLog "Found $ConfigPath" -level verbose
+    return [System.IO.FileInfo]$ConfigPath
 }
 #endregion
 
@@ -1207,7 +1328,7 @@ function Convert-HashtableToArray {
         foreach($key in $keys){
             $match = $ExcludeKeys|Where-Object{$key -like "$_"}
             if($match){
-                Write-Verbose "removing key $key`: $match"
+                # Write-Verbose "removing key $key`: $match"
                 $Output.Remove($key)
             }
         }
@@ -1216,13 +1337,13 @@ function Convert-HashtableToArray {
             # Write-Verbose "$($val.Key) is a $($val.Value.gettype())"
             if($excludeTypes -eq 'object'){
                 if($val.value -is [hashtable] -or $val.value -is [ordered]){
-                    Write-Verbose "!removing value $($val.Key)`: $match"
+                    # Write-Verbose "!removing value $($val.Key)`: $match"
                     $Output.Remove($val.Key)
                 }
             }
             if($excludeTypes -eq 'array'){
                 if($val.value -is [array]){
-                    Write-Verbose "!removing value $($val.Key)`: $match"
+                    # Write-Verbose "!removing value $($val.Key)`: $match"
                     $Output.Remove($val.Key)
                 }
             }
@@ -1361,26 +1482,12 @@ function Find-BoltConfigFile {
     param (
         [System.IO.DirectoryInfo]$SearchFrom = (Get-Location).Path
     )
-    
-    $startsearchFrom = $SearchFrom
+
     $ConfigFileName = "bolt.json"
     if($global:pester_enabled) {
         $ConfigFileName = "bolt.pester.json"
     }
-    $ConfigPath = ""
-    while(!$ConfigPath) {
-        Write-BoltLog "searching for $configFileName in $SearchFrom" -level verbose
-        $ConfigPath = (Get-ChildItem -Path $SearchFrom -Filter $ConfigFileName -ErrorAction SilentlyContinue).FullName
-        # Write-BoltLog "configpath = '$ConfigPath'"
-        if([string]::IsNullOrEmpty($ConfigPath)) {
-            if($null -eq $SearchFrom.Parent) {
-                throw "Could not find $ConfigFileName in $startsearchFrom or any parent directory (stopped at $SearchFrom)"
-            }
-            $SearchFrom = $SearchFrom.Parent
-        }
-    }
-    Write-BoltLog "Found $ConfigPath" -level verbose
-    return [System.IO.FileInfo]$ConfigPath
+    return (Find-File -SearchFrom $SearchFrom -FileName $ConfigFileName)
 }
 #endregion
 
@@ -1485,7 +1592,8 @@ function Test-BoltReleaseTrigger {
         [System.IO.FileInfo]$LocalTemplate,
         [System.IO.FileInfo]$RemoteTemplate,
         [string]$Name,
-        [string[]]$Rules
+        [string[]]$Rules,
+        [Switch]$LogEverything
     )
     
     begin {
@@ -1533,31 +1641,41 @@ function Test-BoltReleaseTrigger {
             $testcases.module.Add($reason)
             return $VersionTest
         }
+
+        $rulesString = $($Rules|ForEach-Object{"'$_'"}) -join ','
+        Write-BoltLog "Command For Test: Test-BoltReleaseTrigger -LocalTemplate '$($LocalTemplate.FullName)' -RemoteTemplate '$($RemoteTemplate.FullName)' -Name '$Name' -Rules @($rulesString) -LogEverything|Write-ModuleUpdateStatus" -level 'dev'
+        # Write-BoltLog "Local template path: $($LocalTemplate.FullName)"
+        # Write-BoltLog "Remote template path: $($RemoteTemplate.FullName)"
+
         $objectParam = @{
             LocalObject    = Get-Content $LocalTemplate.FullName -Raw | ConvertFrom-Json -AsHashtable
             RemoteObject   = Get-Content $RemoteTemplate.FullName -Raw | ConvertFrom-Json -AsHashtable
+        }
+
+        $logparam = @{
+            LogEverything = $LogEverything.IsPresent
         }
 
         Write-BoltLog "$($Rules.Count) rules to test" -level 'verbose'
         # New-BoltLogContext -subContext 'releasetrigger'
         switch -wildcard ($Rules) {
             "param*"{
-                Test-BoltTriggerOnParam @objectParam -rule $_ |ForEach-Object{
+                Test-BoltTriggerOnParam @objectParam -rule $_ @logparam|ForEach-Object{
                     $testcases.parameter.Add($_)
                 }
             }
             "resource*"{
-                Test-BoltTriggerOnResource @objectParam -rule $_ |ForEach-Object{
+                Test-BoltTriggerOnResource @objectParam -rule $_ @logparam|ForEach-Object{
                     $testcases.resources.Add($_)
                 }
             }
             "outputs*"{
-                Test-BoltTriggerOnOutput @objectParam -rule $_ |ForEach-Object{
+                Test-BoltTriggerOnOutput @objectParam -rule $_ @logparam|ForEach-Object{
                     $testcases.outputs.Add($_)
                 }
             }
             "moduleModified" {
-                Test-BoltmoduleModified @Templateparam | ForEach-Object {
+                Test-BoltmoduleModified @Templateparam @logparam| ForEach-Object {
                     $testcases.module.Add($_)
                 }
             }
@@ -1581,11 +1699,16 @@ function Test-BoltmoduleModified {
     [OutputType([ModuleUpdateReason])]
     param (
         [System.IO.FileInfo]$LocalTemplate,
-        [System.IO.FileInfo]$RemoteTemplate
+        [System.IO.FileInfo]$RemoteTemplate,
+        [switch]$LogEverything
     )
     $LocalDigest = New-DigestHash -Item $LocalTemplate -Algorithm SHA256
     $RemoteDigest = New-DigestHash -Item $RemoteTemplate -Algorithm SHA256
     if($LocalDigest -ne $RemoteDigest){
+        if($LogEverything)
+        {
+            Write-BoltLog "Template file has changed" -level "dev"
+        }
         Write-Output ([ModuleUpdateReason]::Modified('file digest', "$($LocalDigest.split(":")[1].Substring(0, 10))..", "$($RemoteDigest.split(":")[1].Substring(0, 10)).."))
     }
 }
@@ -1666,10 +1789,11 @@ function Test-BoltTriggerOnParam {
     param (
         [hashtable]$LocalObject,
         [hashtable]$RemoteObject,
-        [string]$Rule
+        [string]$Rule,
+        [switch]$LogEverything
     )
-    New-BoltLogContext -command "paramTest"
-    Write-BoltLog "PARAMETER RULE: $rule" -level 'dev'
+    New-BoltLogContext -command "paramTest $rule"
+    # Write-BoltLog "PARAMETER RULE: $rule" -level 'dev'
     $ignorewarn = @{
         WarningAction = "SilentlyContinue"
     }
@@ -1709,16 +1833,16 @@ function Test-BoltTriggerOnParam {
     #endregion General Param checks
 
     #region foreach param checks
-    if($null -ne $LocalObject.parameters)
-    {
+    if ($null -ne $LocalObject.parameters) {
         $LocalParams = $LocalObject.parameters.GetEnumerator()
-    }
-    else{
+    } else {
         $LocalParams = @{}.GetEnumerator()
     }
     # foreach local parameter that exists in the remote object
     foreach ($_LocalParam in $LocalParams | Where-Object { $_.key -in $RemoteParamKeys }) {
-        Write-boltLog "parameter: $($_LocalParam.key)" -level 'dev'
+        if ($LogEverything) {
+            Write-boltLog "parameter: $($_LocalParam.key)" -level 'dev'
+        }
         $LocalParam = $_LocalParam.value
         $LocalParamName = $_LocalParam.key
         $RemoteParamName = $RemoteParamKeys | Where-Object { $_ -eq $LocalParamName } | Select-Object -First 1
@@ -1727,8 +1851,10 @@ function Test-BoltTriggerOnParam {
         Switch ($Rule) {
             #check if the parameter name has changed, case sensitive
             "paramCaseModified" {
-                Write-BoltLog " local: $LocalParamName" -level 'dev'
-                Write-BoltLog "remote: $RemoteParamName" -level 'dev'
+                if ($LogEverything) {
+                    Write-BoltLog " local: $LocalParamName" -level 'dev'
+                    Write-BoltLog "remote: $RemoteParamName" -level 'dev'
+                }
                 if ($LocalParamName -cne $RemoteParamName) {
                     Write-Output ([ModuleUpdateReason]::Modified(
                             "parameter." + $LocalParamName + ".case",
@@ -1739,8 +1865,10 @@ function Test-BoltTriggerOnParam {
             }
             #check if the parameter type has changed
             "paramTypeModified" {
-                Write-BoltLog " local: $($LocalParam.type|ConvertTo-Json -Compress @ignorewarn)" -level 'dev'
-                Write-BoltLog "remote: $($RemoteParam.type|ConvertTo-Json -Compress @ignorewarn)" -level 'dev'
+                if ($LogEverything) {
+                    Write-BoltLog " local: $($LocalParam.type|ConvertTo-Json -Compress @ignorewarn)" -level 'dev'
+                    Write-BoltLog "remote: $($RemoteParam.type|ConvertTo-Json -Compress @ignorewarn)" -level 'dev'
+                }
                 if ($LocalParam.type -ne $RemoteParam.type) {
                     Write-Output ([ModuleUpdateReason]::Modified(
                             "parameter." + $LocalParamName + ".type",
@@ -1753,8 +1881,10 @@ function Test-BoltTriggerOnParam {
             {
                 $_ -in "paramAllowedValueRemoved", "paramAllowedValueModified"
             } {
-                Write-BoltLog " local: $($LocalParam.allowedValues|ConvertTo-Json -Compress @ignorewarn)" -level 'dev'
-                Write-BoltLog "remote: $($RemoteParam.allowedValues|ConvertTo-Json -Compress @ignorewarn)" -level 'dev'
+                if ($LogEverything) {
+                    Write-BoltLog " local: $($LocalParam.allowedValues|ConvertTo-Json -Compress @ignorewarn)" -level 'dev'
+                    Write-BoltLog "remote: $($RemoteParam.allowedValues|ConvertTo-Json -Compress @ignorewarn)" -level 'dev'
+                }
                 $RemoteParam.allowedValues | Where-Object { $_ -notin $LocalParam.allowedValues } | ForEach-Object {
                     Write-Output ([ModuleUpdateReason]::Removed(
                             "$LocalParamName.allowValues",
@@ -1766,8 +1896,10 @@ function Test-BoltTriggerOnParam {
             {
                 $_ -in "paramAllowedValueAdded", "paramAllowedValueModified"
             } {
-                Write-BoltLog " local: $($LocalParam.allowedValues|ConvertTo-Json -Compress @ignorewarn)" -level 'dev'
-                Write-BoltLog "remote: $($RemoteParam.allowedValues|ConvertTo-Json -Compress @ignorewarn)" -level 'dev'
+                if ($LogEverything) {
+                    Write-BoltLog " local: $($LocalParam.allowedValues|ConvertTo-Json -Compress @ignorewarn)" -level 'dev'
+                    Write-BoltLog "remote: $($RemoteParam.allowedValues|ConvertTo-Json -Compress @ignorewarn)" -level 'dev'
+                }
                 if ($LocalParam.allowedValues -ne $RemoteParam.allowedValues) {
                     $LocalParam.allowedValues | Where-Object { $_ -notin $RemoteParam.allowedValues } | ForEach-Object {
                         Write-Output ([ModuleUpdateReason]::Added(
@@ -1780,9 +1912,11 @@ function Test-BoltTriggerOnParam {
             }
             #check if the parameter defaultValue has changed
             "paramDefaultValueModified" {
-                Write-BoltLog " local: $($LocalParam.defaultValue|ConvertTo-Json -Compress @ignorewarn)" -level 'dev'
-                Write-BoltLog "remote: $($RemoteParam.defaultValue|ConvertTo-Json -Compress @ignorewarn)" -level 'dev'
-                if (($LocalParam.defaultValue|ConvertTo-Json) -ne ($RemoteParam.defaultValue|ConvertTo-Json)) {
+                if ($LogEverything) {
+                    Write-BoltLog " local: $($LocalParam.defaultValue|ConvertTo-Json -Compress @ignorewarn)" -level 'dev'
+                    Write-BoltLog "remote: $($RemoteParam.defaultValue|ConvertTo-Json -Compress @ignorewarn)" -level 'dev'
+                }
+                if (($LocalParam.defaultValue | ConvertTo-Json) -ne ($RemoteParam.defaultValue | ConvertTo-Json)) {
                     Write-Output ([ModuleUpdateReason]::Modified(
                             "parameter." + $LocalParamName + ".defaultValue",
                             $LocalParam.defaultValue,
@@ -1941,10 +2075,17 @@ function Test-BoltConfigRegistry {
             if(![guid]::TryParse($Config.subscriptionId, [ref]$guid)) {
                 throw "registry.subscriptionid needs to be a guid, not a name"
             }
-            $Subscription = (get-azsubscription -tenantid $Config.tenantId -SubscriptionId $Config.subscriptionId -ea SilentlyContinue)
+            $tenant = get-aztenant -tenantid $Config.tenantId
+            $Subscription = (get-azsubscription -tenantid $tenant.id -SubscriptionId $Config.subscriptionId -ea SilentlyContinue)
             if (!$Subscription) {
                 Throw "Could not find defined subscriptionId '$($Config.subscriptionId)'"
             }
+            # $context = get-azcontext
+            if($context.Tenant.Id -ne $tenant.id){
+                Write-BoltLog "setting context from tenant $($context.Tenant.Id) to tenant $($Config.tenantId)"
+                Set-AzContext -TenantId $tenant.Id -Subscription $config.subscriptionId -WarningAction SilentlyContinue -ErrorAction Stop -WhatIf:$false | Out-Null
+            }
+            # $context = get-azcontext
 
             # if ((get-azcontext).Subscription.Id -ne $Subscription.Id) {
             #     Write-BoltLog -level verbose -message "Setting context to subscription $($Subscription.Name)"
@@ -1972,7 +2113,7 @@ function Test-BoltConfigRegistry {
             }
             catch{
                 # Write-BoltLog -level verbose -message $_
-                throw "error tyrying to find $($Config.type) '$($Config.name)' in subscription'$($Config.subscriptionId)': $_"
+                throw "error tyrying to find $($Config.type) '$($Config.name)' in subscription '$($Config.subscriptionId)': $_"
             }
             # $Resource = Get-AzResource - #-ResourceType 'Microsoft.ContainerRegistry/registries' -Name $Config.name 
             # if (!$Resource) {
@@ -2104,6 +2245,14 @@ if ((test-path $TempFolder) -eq $false) {
 }
 
 $ModuleRoot = join-path (Get-GitRoot) $config.module.folder
+
+#Region Process BicepConfig
+$BicepConfig = Get-BicepConfig -path $ModuleRoot
+if($BicepConfig.symbolicNameCodegenEnabled() -eq $false){
+    Write-BoltLog "Symbolic name codegen is disabled. It is highly recomended to enable this under bicepconfig.experimentalfeatures. this enabled " -level warning
+}
+#endregion
+
 
 Write-BoltLog "Getting bicep modules from $ModuleRoot"
 

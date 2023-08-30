@@ -52,8 +52,7 @@
                             "description": "the style of your module repository. SingleModuleFolder for a single module per folder (./mymodule/main.bicep) or MultiModuleFolder for multiple modules in a single folder (./mymodule.bicep)",
                             "type": "string",
                             "enum": [
-                                "SingleModuleFolder",
-                                "MultiModuleFolder"
+                                "SingleModuleFolder"
                             ]
                         },
                         "filter": {

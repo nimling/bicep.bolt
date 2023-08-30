@@ -36,6 +36,11 @@
             $remoteOutput = $RemoteOutputs[$localKey]|Convert-HashtableToArray -excludeTypes array,object
             foreach($out in $localOutput.keys){
                 if($localOutput[$out] -ne $remoteOutput[$out]){
+                    if($LogEverything){
+                        Write-BoltLog "output $localKey.$out has changed" -level 'dev'
+                        Write-BoltLog "local: $($localOutput[$out])" -level 'dev'
+                        Write-BoltLog "remote: $($remoteOutput[$out])" -level 'dev'
+                    }
                     $name = $localKey + "." + $out
                     Write-Output ([ModuleUpdateReason]::Modified($name, $remoteOutput[$out], $localOutput[$out]))
                     continue :outputsearch

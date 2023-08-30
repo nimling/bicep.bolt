@@ -26,7 +26,7 @@
         $Temp = $res["_${item}"]
         if($Temp -is [array]){
             Write-BoltLog "$item template is not symbolic. converting to hashtable" -level 'verbose'
-            $Temp |%{
+            $Temp |ForEach-Object{
                 $resource = $_
                 $resourceBase = ($resource.type.split("/") | Select-Object -Skip 1) -join "/"
                 $Name = $resourceBase + "@" + $resource.apiVersion
