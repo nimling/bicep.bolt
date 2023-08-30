@@ -26,7 +26,7 @@ param value string
   what should the secret be identified as within keyvault? some content types will enable different features in keyvault. 
   optional, but highly recomended
 ''')
-param contentType string = ''
+param contentType string?
 
 @description('any template selected here will be used instead of param "contentTypes"')
 @allowed([
@@ -43,12 +43,11 @@ param contentTypeTemplate string = ''
 @description('Dont set. used as a base for figuring out ISO 8601 duration')
 param baseTime string  = utcNow()
 
-// var _now  = utcNow('u')
 var _exp = empty(expiration)?'':startsWith(toUpper(expiration),'P')?dateTimeAdd(baseTime, expiration):expiration
 var _nbf = startsWith(toUpper(notBefore),'P')?dateTimeAdd(baseTime, notBefore):notBefore
 output iso string = dateTimeAdd(baseTime, 'P1Y')
 
-var _contentType = empty(contentTypeTemplate)?contentType:contentTypeTemplate
+var _contentType = empty(contentTypeTemplate)?string(contentType):contentTypeTemplate
 
 resource kv 'Microsoft.KeyVault/vaults@2022-07-01' existing = {
   name: keyvaultName

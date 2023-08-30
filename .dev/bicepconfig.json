@@ -13,6 +13,7 @@
   "experimentalFeaturesEnabled": {
     "sourceMapping": true,
     "symbolicNameCodegen": true,
-    "prettyPrinting": true
+    "prettyPrinting": true,
+    "userDefinedTypes": true
   }
 }
