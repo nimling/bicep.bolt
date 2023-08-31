@@ -89,13 +89,3 @@ function Convert-HashtableToArray {
         return $Output
     }
 }
-# $exclude = @(
-#     "*`$schema"
-#     "*_generator*"
-# )
-# # $excludetypes = @(
-# #     [System.Management.Automation.OrderedHashtable]
-# #     [hashtable]
-# #     [array]
-# # )
-# (gc 'C:\git\nim\bicep.bolt\.bicepTemp\keyvault_onetimesecret_template.json' | ConvertFrom-Json -AsHashtable) | Convert-HashtableToArray -Verbose -excludeTypes array,object #-ExcludeKeys $exclude
