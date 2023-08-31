@@ -90,7 +90,8 @@ run `bolt.ps1` with the following possible parameters:
 
 The Branch/Release Name to use for publish. This is reflected in config.publish.releases
 
-`-branch` is to be deprecated, but its a large part of the codebase, so il fix it later on. dont use it.
+Note:  
+`-branch` is to be deprecated, but its a large part of the codebase, so il fix it later on. dont use it, use `-release` instead. its the same parameter.
 
 #### -Name
 
