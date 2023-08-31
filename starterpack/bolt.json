@@ -34,7 +34,7 @@
         ]
       }
     },
-    "defaultRelease": "defaultRelease",
+    "defaultRelease": "dev",
     "releases": [
       {
         "name": "dev",

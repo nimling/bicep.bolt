@@ -172,7 +172,8 @@
                     "minProperties": 1
                 },
                 "defaultRelease": {
-                    "type": "string"
+                    "type": "string",
+                    "default": "dev"
                 },
                 "releases": {
                     "type": "array",

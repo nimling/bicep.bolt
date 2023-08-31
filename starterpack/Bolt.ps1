@@ -1,4 +1,4 @@
-#BUILD 0.2.230829
+#BUILD 0.2.230831
 #region using
 using namespace system.collections.generic
 using namespace diagnostics.codeanalysis
@@ -50,7 +50,7 @@ param(
     [switch]$Dotsource
 )
 #region build
-$BuildId=0.2.230829
+$BuildId=0.2.230831
 #endregion build
 
 if ($whatifpreference -and !$Dotsource) {
@@ -1817,7 +1817,7 @@ function Test-BoltTriggerOnParam {
         "paramAddedWithoutDefaultValue" {
             $LocalParamKeysInRemote | ForEach-Object {
                 $ParamValue = $LocalObject.parameters[$_]
-                if ([string]::IsNullOrEmpty($ParamValue.defaultValue)) {
+                if ([string]::IsNullOrEmpty($ParamValue.defaultValue) -and $ParamValue.nullable -ne $true) {
                     Write-Output ([ModuleUpdateReason]::Added($_, "$($ParamValue.type) w/o default value"))
                 }
             }
