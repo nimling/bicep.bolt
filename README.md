@@ -106,13 +106,13 @@ If you want to push several modules within the same folder, you can say path/to/
 
 The actions to perform. Defaults to 'Publish'.
 
-Publish: Publish the modules to the registry
+**Publish**: Publish the modules to the registry
 
-CreateUpdateData: (NOT ENABLED YET) Creates json with data of what triggered the update. useful for 'whats new' documentation
+**CreateUpdateData**: (NOT ENABLED YET) Creates json with data of what triggered the update. useful for 'whats new' documentation
 
-CleanRegistry: Removes repositories not found during discovery (will test agains all modules even if you have a name defined)
+**CleanRegistry**: Removes repositories not found during discovery (will test agains all modules even if you have a name defined)
 
-All: Perform all actions
+**All**: Perform all actions
 
 #### -List
 
