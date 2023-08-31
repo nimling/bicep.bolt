@@ -45,7 +45,9 @@ properties {
         pester_switch = "pester_enabled"
 
         #tags to run. it will also run tests that have no tags, but it can help to identity issues with specific tests
-        tags          = @()
+        tags          = @(
+            "general"
+        )
     }
     $scriptAnalyzer = @{
         #version of module

@@ -39,7 +39,7 @@ Author: Philip Meholm
 )]
 param(
     [Alias("Release")]
-    [string]$Branch = "prod",
+    [string]$Branch,
     [string]$Name = "*",
     [ValidateSet("CreateUpdateData", "Publish", "CleanRegistry", "All" )]
     [string[]]$Actions = "Publish",

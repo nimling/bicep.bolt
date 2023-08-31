@@ -1,4 +1,4 @@
-function Test-BoltConfigRegistry {
+﻿function Test-BoltConfigRegistry {
     [CmdletBinding()]
     param (
         [boltConfigRegistry]$Config
@@ -55,7 +55,7 @@ function Test-BoltConfigRegistry {
             $uri = $_Uri -join ""
             Write-BoltLog -level verbose -message "check if registry exists:'$($Uri -join '')'"
             try{
-                $k = Invoke-AzRest -Path $uri -Verbose:$false -ErrorAction Stop
+                $k = Invoke-AzRestMethod -Path $uri -Verbose:$false -ErrorAction Stop
                 $resource = ($k.Content | ConvertFrom-Json).value
                 if($resource.count -lt 1){
                     throw "Could not find defined registry"
