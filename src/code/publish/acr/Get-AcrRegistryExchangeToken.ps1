@@ -6,10 +6,10 @@ function Get-AcrRegistryExchangeToken {
     )
     
     $token = Get-AzAccessToken -Verbose:$false
-    if($registry -like "https://*") {
-        $registry = $registry -replace "https://", ""
-    }
-    
+    $registry = $registry -replace "https://", ""
+    # if($registry -like "https://*") {
+    # }
+
     $registryUrl = "https://$registry"
     $exchangeUri = "$RegistryUrl/oauth2/exchange"
     $param = @{
@@ -26,6 +26,7 @@ function Get-AcrRegistryExchangeToken {
         }
         ErrorAction = 'Stop'
     }
+    
     $verb = $VerbosePreference
     try{
         $VerbosePreference = "SilentlyContinue"

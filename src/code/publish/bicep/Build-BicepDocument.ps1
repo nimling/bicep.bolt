@@ -9,6 +9,12 @@ function Build-BicepDocument {
         [System.IO.FileInfo]$LogFile
     )
     begin {
+        if($File.Extension -ne ".bicep"){
+            throw "File must be a bicep document"
+        }
+        if($File.Exists -eq $false){
+            throw "File $($File.FullName) does not exist"
+        }
     }
     process {
         if (!$LogFile) {

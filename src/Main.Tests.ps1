@@ -60,7 +60,9 @@ describe "General Tests" -Tag "General" {
             $CommandsInScript| ForEach-Object {
                 $Location = @($($_.Extent.StartLineNumber), $($_.Extent.StartColumnNumber))
                 Write-Verbose "Command $($_.GetCommandName())($($Location[0]),$($Location[1])) not found"
-            } 
+            }
+
+            #add commands that are defined inside script
     
             #this should be empty
             $CommandsInScript|ForEach-Object{$_.GetCommandName()}| Select-Object -Unique | should -BeNullOrEmpty

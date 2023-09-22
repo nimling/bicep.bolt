@@ -257,6 +257,23 @@ Task pester {
         }
     }
 
+    $Monoscript_path = join-path $Source.dir $Source.monoScript_base
+
+    #Find all cmdlets inside monoscript
+    (get-command $Monoscript_path).ScriptBlock.Ast.FindAll(
+        {
+            param($ast)
+            $ast -is [System.Management.Automation.Language.FunctionDefinitionAst]
+        }, $true
+    )|ForEach-Object{
+        #Create scriptblock of cmdlets extent
+        $cmdlet = [scriptblock]::Create($_.extent.text)
+        Write-verbose "dot-sourcing $($_.name) from monoscript"
+        #dotsource it into the current scope
+        . $cmdlet
+    }
+    # Write-verbose
+
     $results = 0
     $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
     foreach ($tag in $pester.tags) {
@@ -542,7 +559,7 @@ task generate_target {
         }
         @{
             name    = $monoscript_settings.buildversion_tag
-            content = @('$' + $monoscript_settings.buildversion_variable + "=" + $target.version)
+            content = @('$' + $monoscript_settings.buildversion_variable + "=" + "'"+$target.version+"'")
         }
     )
 
