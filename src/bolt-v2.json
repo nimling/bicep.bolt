@@ -1,0 +1,84 @@
+{
+  "$schema": "./bolt.schema.json",
+  "bicep":{
+    "minimumversion":"someval",
+    "remoteBicepConfig":{
+      "remote":"acr"
+      ""
+    }
+  },
+  "remotes":[
+    {
+      "name":"acr",
+      "type":"acr",
+      "config":{
+        "subscriptionId":"subid",
+        "resourceGroup":"rg",
+        "registry":"registry"
+      }
+    },
+    {
+      "name":"github",
+      "type":"github",
+      "config":{
+        "owner":"owner",
+        "repo":"repo",
+        "branch":"branch"
+      }
+    },
+    {
+      "name":"local",
+      "type":"local",
+      "config":{
+        "path":"path"
+      }
+    }
+  ]
+  "registry": {
+    "name": "name",
+    "subscriptionId": "subscriptionId",
+    "tenantId": "mytenant.com"
+  },
+  "module": {
+    "temp": "temp",
+    "folder": "folder",
+    "organisationStyle": {
+      "type": "SingleModuleFolder",
+      "filter": "*",
+      "exclude": ""
+    }
+  },
+  "publish": {
+    "releaseTrigger": {
+      "static": {
+        "update": [
+          "paramCaseModified"
+        ]
+      },
+      "semantic": {
+        "major": [
+          "paramCaseModified"
+        ],
+        "minor": [
+          "paramCaseModified"
+        ],
+        "patch": [
+          "paramCaseModified"
+        ]
+      }
+    },
+    "defaultRelease": "dev",
+    "releases": [
+      {
+        "name": "dev",
+        "trigger": "static",
+        "value": "beta-latest"
+      },
+      {
+        "name": "dev",
+        "trigger": "semantic",
+        "prefix": "beta-"
+      }
+    ]
+  }
+}

@@ -1,0 +1,76 @@
+{
+    "$schema": "./../../../deployconfig.schema.json",
+    "tenant": "nim.io",
+    "deployLocation": "NorwayEast",
+    "bicep": {
+        "minimumVersion": "0.13.1"
+    },
+    "dry": {
+        "style": "<>",
+        "throwOnUnhandledParameter": true
+    },
+    "environments": [
+        {
+            "name": "test",
+            "isScoped": true,
+            "variables": {
+                "env": {
+                    "description": "Environment",
+                    "value": "test",
+                    "tag": "env"
+                }
+            }
+        },
+        {
+            "name": "dev",
+            "isScoped": true,
+            "variables": {
+                "env": {
+                    "description": "Environment",
+                    "value": "dev",
+                    "tag": "<env>"
+                }
+            }
+        },
+        {
+            "name": "prod",
+            "isScoped": true,
+            "variables": {
+                "env": {
+                    "description": "Environment",
+                    "value": "prod",
+                    "tag": "<env>"
+                }
+            }
+        },
+        {
+            "name": "any",
+            "isScoped": false,
+            "variables": {
+                "string": {
+                    "description": "Project name",
+                    "value": "bicep_deploy",
+                    "tag": "project"
+                },
+                "array": {
+                    "description": "Location",
+                    "value": "NorwayEast",
+                    "tag": "location"
+                },
+                "object": {
+                    "description": "Tags",
+                    "value": {
+                        "owner": "Philip Meholm",
+                        "contact": "Philip@nimtech.no"
+                    },
+                    "tag": "tags"
+                },
+                "boolean":{
+                    "description": "Boolean",
+                    "value": true,
+                    "tag": "boolean"
+                }
+            }
+        }
+    ]
+}

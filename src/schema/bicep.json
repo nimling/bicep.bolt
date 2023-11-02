@@ -1,0 +1,12 @@
+{
+    "$schema":"http://json-schema.org/draft-07/schema#",
+    "$id": "bicep",
+    "type":"object",
+    "description": "Bicep language configuration options",
+    "properties": {
+        "version":{
+            "type":"string",
+            "description":"The version of the Bicep language to use. Defaults to latest."
+        }
+    }
+}

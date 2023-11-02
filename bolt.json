@@ -1,0 +1,19 @@
+{
+    "$schema": "./starterpack/bolt.schema.json",
+    "tenant": "samna.io",
+    "bicep": {
+        "version": "0.20.0"
+    },
+    "deploy": {
+        "deployFromLocation": "norway",
+        "environments": {
+            "test":{
+                "reference": "test.json"
+            }
+        },
+        "varHandling": {
+            "style": "<>",
+            "throwOnUnhandledVariable": true
+        }
+    }
+}

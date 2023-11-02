@@ -1,0 +1,74 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "description": "The schema for the bolt deploy config",
+    "additionalProperties": false,
+    "properties": {
+        "deployFromLocation": {
+            "description": "The location to deploy from",
+            "$ref": "./../azlocation.json"
+        },
+        "varHandling": {
+            "description": "Settings for variable handling when running bolt deploy",
+            "type": "object",
+            "properties": {
+                "style": {
+                    "type": "string",
+                    "description": "The tag style to use for dry variables within environments",
+                    "enum": [
+                        "{}",
+                        "[]",
+                        "<>"
+                    ],
+                    "default": "<>"
+                },
+                "directoryVarStyle": {
+                    "description": "The tag style to use for directory variables within environments",
+                    "type": "string",
+                    "enum": [
+                        "{}",
+                        "[]",
+                        "none",
+                        "sameAsStyle"
+                    ],
+                    "default": "none"
+                },
+                "throwOnUnhandledVariable": {
+                    "type": "boolean",
+                    "description": "Whether to throw an error if a parameter with variable tags is not handled",
+                    "default": true
+                }
+            },
+            "required": [
+                "style",
+                "throwOnUnhandledVariable"
+            ]
+        },
+        "environments": {
+            "type": "object",
+            "description": "The environments to deploy to",
+            "additionalProperties": {
+                "oneOf": [
+                    {
+                        "type": "object",
+                        "properties": {
+                            "reference": {
+                                "type": "string",
+                                "description": "The reference to the environment to use. If not specified, the environment will be used as the default environment",
+                                "pattern": "^[a-zA-Z0-9_.-]+[.](json|jsonc)$"
+                            }
+                        }
+                    },
+                    {
+                        "$ref": "./environments.json"
+                    }
+                ]
+            },
+            "default": {}
+        }
+    },
+    "required": [
+        "deployFromLocation",
+        "varHandling",
+        "environments"
+    ]
+}

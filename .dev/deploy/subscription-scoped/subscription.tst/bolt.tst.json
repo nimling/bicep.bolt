@@ -1,0 +1,10 @@
+{
+    "$schema": "./../../../../starterpack/bolt.env.schema.json",
+    "isScoped": true,
+    "variables": {
+        "test":{
+            "type": "string",
+            "description": "test"
+        }
+    }
+}

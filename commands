@@ -1,5 +1,5 @@
 
-bolt.ps1 -solution publish auto:[-release dev] -Name some*name
--> bolt.ps1 publish dev some*name
-bolt.ps1 -solution deploy auto:[-env prd -dryrun|-list ] -name appservice
-bolt.ps1 -solution sync
+bolt.ps1 -solution publish auto:[-release dev] -Name somename -> bolt.ps1 publish dev some*name
+bolt.ps1 -solution deploy auto:[-env prd -dryrun|-list ] -name appservice -> bolt.ps1 deploy prd
+bolt.ps1 -solution deploy-sync auto:[-fromEnv -toEnv] -> bolt.ps1 deploy-sync tst prd 
+bolt.ps1 -solution config auto:[-targetSolution publish|deploy] -> bolt.ps1 config publish

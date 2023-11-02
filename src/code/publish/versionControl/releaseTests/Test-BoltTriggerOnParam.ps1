@@ -32,7 +32,7 @@ function Test-BoltTriggerOnParam {
         "paramAddedWithoutDefaultValue" {
             $LocalParamKeysInRemote | ForEach-Object {
                 $ParamValue = $LocalObject.parameters[$_]
-                if ([string]::IsNullOrEmpty($ParamValue.defaultValue) -and $ParamValue.nullable -ne $true) {
+                if (($null -eq $ParamValue.defaultValue) -and $ParamValue.nullable -ne $true) {
                     Write-Output ([ModuleUpdateReason]::Added($_, "$($ParamValue.type) w/o default value"))
                 }
             }

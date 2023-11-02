@@ -1,0 +1,16 @@
+{
+    "$schema": "./../../../starterpack/bolt.schema.json",
+    "deploy": {
+        "deployFromLocation": "norway",
+        "environments": {
+            "dev":{
+                "reference": "bolt.tst"
+            }
+        },
+        "varHandling": {
+            "directoryVarStyle": "sameAsStyle",
+            "style": "[]",
+            "throwOnUnhandledVariable": true
+        }
+    }
+}

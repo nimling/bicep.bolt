@@ -1,4 +1,0 @@
-{
-    "$schema": "./bolt.schema.json",
-    "bicepVersion": "0.14.0"
-}

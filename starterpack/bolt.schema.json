@@ -1,295 +1,288 @@
 {
-    "$schema": "http://json-schema.org/draft-07/schema",
-    "type": "object",
-    "description": "Configuration for bicep publish",
-    "properties": {
-        "bicepVersion": {
-            "type": "string",
-            "pattern": "\\d+\\.\\d+\\.\\d+",
-            "default": "0.17.0",
-            "description": "The required version of bicep. written as version (example: 1.0.1)"
-        },
-        "registry": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "description": "name of container registy. url not needed",
-                    "type": "string"
-                },
-                "subscriptionId": {
-                    "description": "Subscription ID",
-                    "type": "string"
-                },
-                "tenantId": {
-                    "default":"mytenant.com",
-                    "description": "Tenant ID of tenant domain",
-                    "type": "string"
-                }
-            },
-            "required": [
-                "tenantId",
-                "subscriptionId",
-                "name"
-            ]
-        },
-        "module": {
-            "description": "module configuration",
-            "type": "object",
-            "properties": {
-                "temp":{
-                    "type":"string",
-                    "description": "where to store temporary files. default is 'bicepTemp'. path is relative to config file"
-                },
-                "folder": {
-                    "description": "Location of modules in relation to config file",
-                    "type": "string"
-                },
-                "organisationStyle": {
-                    "description": "how modules are organised",
-                    "type": "object",
-                    "properties": {
-                        "type": {
-                            "description": "the style of your module repository. SingleModuleFolder for a single module per folder (./mymodule/main.bicep) or MultiModuleFolder for multiple modules in a single folder (./mymodule.bicep)",
-                            "type": "string",
-                            "enum": [
-                                "SingleModuleFolder"
-                            ]
-                        },
-                        "filter": {
-                            "description": "only deploy modules that match this filter. this is wildcard. if you have defined SingleModuleFolder type, this is used to define what that single module should be named.",
-                            "default": "*",
-                            "type": "string"
-                        },
-                        "exclude": {
-                            "description": "exclude modules that match this filter. this is wildcard. default is empty",
-                            "default": "",
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "type",
-                        "filter"
-                    ],
-                    "oneOf": [
-                        {
-                            "properties": {
-                                "type": {
-                                    "enum": [
-                                        "SingleModuleFolder"
-                                    ]
-                                },
-                                "filter": {
-                                    "default": "main.bicep",
-                                    "type": "string"
-                                }
-                            },
-                            "required": [
-                                "type",
-                                "filter"
-                            ]
-                        }
-                    ]
-                }
-            },
-            "required": [
-                "folder",
-                "organisationStyle"
-            ]
-        },
-        "publish": {
-            "type": "object",
-            "properties": {
-                "releaseTrigger": {
-                    "description": "what should trigger a publish",
-                    "type": "object",
-                    "properties": {
-                        "static": {
-                            "type": "object",
-                            "properties": {
-                                "update": {
-                                    "$ref": "#/definitions/moduleUpdateTriggers"
-                                }
-                            },
-                            "default":{
-                                "update":[
-                                    "moduleModified"
-                                ]
-                            }
-                        },
-                        "semantic": {
-                            "type": "object",
-                            "properties": {
-                                "major": {
-                                    "$ref": "#/definitions/moduleUpdateTriggers",
-                                    "default": [
-                                        "paramCaseModified",
-                                        "paramAddedWithoutDefaultValue",
-                                        "paramRemoved",
-                                        "paramTypeModified",
-                                        "paramAllowedValueModified",
-                                        "paramDefaultValueModified"
-                                    ]
-                                },
-                                "minor": {
-                                    "$ref": "#/definitions/moduleUpdateTriggers",
-                                    "default": [
-                                        "resourceAdded",
-                                        "resourceApiVersionModified",
-                                        "resourcePropertiesAdded",
-                                        "resourcePropertiesRemoved",
-                                        "resourcePropertiesModified"
-                                    ]
-                                },
-                                "patch": {
-                                    "$ref": "#/definitions/moduleUpdateTriggers",
-                                    "default": [
-                                        "moduleModified"
-                                    ]
-                                }
-                            },
-                            "default":{
-                                "major":[
-                                    "paramCaseModified",
-                                    "paramAddedWithoutDefaultValue",
-                                    "paramRemoved",
-                                    "paramTypeModified",
-                                    "paramAllowedValueModified",
-                                    "paramDefaultValueModified"
-                                ],
-                                "minor":[
-                                    "resourceAdded",
-                                    "resourceApiVersionModified",
-                                    "resourcePropertiesAdded",
-                                    "resourcePropertiesRemoved",
-                                    "resourcePropertiesModified"
-                                ],
-                                "patch":[
-                                    "moduleModified"
-                                ]
-                            }
-                        }
-                    },
-                    "minProperties": 1
-                },
-                "defaultRelease": {
-                    "type": "string",
-                    "default": "dev"
-                },
-                "releases": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "name": {
-                                "type": "string",
-                                "examples": [
-                                    "prod",
-                                    "dev"
-                                ]
-                            },
-                            "trigger": {
-                                "type": "string",
-                                "enum": [
-                                    "static",
-                                    "semantic"
-                                ]
-                            },
-                            "value": {
-                                "description": "will be used as the value when released. ignored for semantic version",
-                                "type": "string"
-                            },
-                            "prefix": {
-                                "description": "will be used as the prefix when released. version '1.2.3' would be 'v1.2.3' if prefix is 'v'",
-                                "type": "string",
-                                "examples": [
-                                    "v"
-                                ]
-                            }
-                        }
-                    },
-                    "minItems": 1,
-                    "default":[
-                        {
-                            "name": "dev",
-                            "trigger": "static",
-                            "value": "beta-latest"
-                        },
-                        {
-                            "name": "dev",
-                            "trigger": "semantic",
-                            "prefix": "beta-"
-                        }
-                    ]
-                }
-            },
-            "examples": [
-                {
-                    "releaseTrigger":{
-                        "static":{
-                            "update":[
-                                "moduleModified"
-                            ]
-                        },
-                        "semantic":{
-                            "major":[
-                                "paramAddedWithoutDefaultValue"
-                            ],
-                            "minor":[
-                                "resourceAdded"
-                            ],
-                            "patch":[
-                                "moduleModified"
-                            ]
-                        }
-                    },
-                    "defaultRelease": "dev",
-                    "releases": [
-                        {
-                            "name": "dev",
-                            "trigger": "static",
-                            "value": "beta"
-                        }
-                    ]
-
-                }
-            ],
-            "required": [
-                "releaseTrigger",
-                "defaultRelease",
-                "releases"
-            ]
-        }
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "Bolt Schema",
+  "type": "object",
+  "description": "Root schema for Bolt",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Schema to use for validation and autocomplete",
+      "examples": [
+        "./starterpack/bolt.schema.json"
+      ]
     },
-    "required": [
-        "bicepVersion",
-        "registry",
-        "module",
-        "publish"
-    ],
-    "definitions": {
-        "moduleUpdateTriggers": {
-            "type": "array",
-            "items": {
-                "type": "string",
-                "enum": [
-                    "paramCaseModified",
-                    "paramAddedWithoutDefaultValue",
-                    "paramRemoved",
-                    "paramTypeModified",
-                    "paramAllowedValueModified",
-                    "paramDefaultValueModified",
-                    "resourceAdded",
-                    "resourceRemoved",
-                    "resourceApiVersionModified",
-                    "resourcePropertiesAdded",
-                    "resourcePropertiesRemoved",
-                    "resourcePropertiesModified",
-                    "outputsAdded",
-                    "outputsRemoved",
-                    "outputsModified",
-                    "moduleModified"
-                ]
-            }
-        }
+    "tenant": {
+      "type": "string",
+      "description": "Tenant name or id",
+      "examples": [
+        "mytenant.com",
+        "mytenant.onmicrosoft.com",
+        "00000000-0000-0000-0000-000000000000"
+      ]
+    },
+    "bicep": {
+      "$ref": "#/definitions/Bicep"
+    },
+    "remote": {
+      "$ref": "#/definitions/Remote"
+    },
+    "deploy": {
+      "$ref": "#/definitions/Deploy"
     }
+  },
+  "definitions": {
+    "Bicep": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "description": "Bicep language configuration options",
+      "properties": {
+        "version": {
+          "type": "string",
+          "description": "The version of the Bicep language to use. Defaults to latest."
+        }
+      },
+      "$id": "bicep"
+    },
+    "Remote": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "remote registry schema",
+      "type": "array",
+      "description": "schema for remote items",
+      "items": {
+        "anyOf": [
+          {
+            "$ref": "#/definitions/Remote/definitions/remote_acr"
+          }
+        ]
+      },
+      "definitions": {
+        "remote_acr": {
+          "title": "remote acr item",
+          "type": "object",
+          "description": "Azure Container Registry options",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "acr"
+              ]
+            },
+            "tenant": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "configTenant"
+                  ]
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "subscription": {
+              "type": "string"
+            },
+            "resourceGroup": {
+              "type": "string"
+            },
+            "registry": {
+              "type": "string"
+            }
+          }
+        },
+        "remote_github": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "github"
+              ]
+            },
+            "owner": {
+              "type": "string"
+            },
+            "repo": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string"
+            },
+            "ref": {
+              "type": "string"
+            }
+          },
+          "examples": [
+            {
+              "owner": "Azure",
+              "repo": "bicep-registry-modules",
+              "path": "modules",
+              "ref": "master"
+            }
+          ]
+        }
+      }
+    },
+    "Azlocation": {
+      "type": "string",
+      "enum": [
+        "eastus",
+        "eastus2",
+        "southcentralus",
+        "westus2",
+        "westus3",
+        "australiaeast",
+        "southeastasia",
+        "northeurope",
+        "swedencentral",
+        "uksouth",
+        "westeurope",
+        "centralus",
+        "southafricanorth",
+        "centralindia",
+        "eastasia",
+        "japaneast",
+        "koreacentral",
+        "canadacentral",
+        "francecentral",
+        "germanywestcentral",
+        "italynorth",
+        "norwayeast",
+        "polandcentral",
+        "switzerlandnorth",
+        "uaenorth",
+        "brazilsouth",
+        "centraluseuap",
+        "israelcentral",
+        "qatarcentral",
+        "asia",
+        "asiapacific",
+        "australia",
+        "brazil",
+        "canada",
+        "europe",
+        "france",
+        "germany",
+        "global",
+        "india",
+        "japan",
+        "korea",
+        "norway",
+        "singapore",
+        "southafrica",
+        "switzerland",
+        "unitedstates",
+        "northcentralus",
+        "westus",
+        "eastus2euap",
+        "westcentralus",
+        "southafricawest",
+        "australiacentral",
+        "australiacentral2",
+        "australiasoutheast",
+        "japanwest",
+        "koreasouth",
+        "southindia",
+        "westindia",
+        "canadaeast",
+        "francesouth",
+        "germanynorth",
+        "norwaywest",
+        "switzerlandwest",
+        "ukwest",
+        "uaecentral",
+        "brazilsoutheast"
+      ]
+    },
+    "Environments": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "isScoped": {
+          "type": "boolean",
+          "description": "Whether the environment is scoped. scoped environment needs to be called, specifically at the start of script, non-scoped is always present"
+        },
+        "variables": {
+          "type": "object",
+          "description": "The variables to set in the environment"
+        }
+      }
+    },
+    "Deploy": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "The schema for the bolt deploy config",
+      "additionalProperties": false,
+      "required": [
+        "deployFromLocation",
+        "varHandling",
+        "environments"
+      ],
+      "properties": {
+        "deployFromLocation": {
+          "description": "The location to deploy from",
+          "$ref": "#/definitions/Azlocation"
+        },
+        "varHandling": {
+          "type": "object",
+          "description": "Settings for variable handling when running bolt deploy",
+          "required": [
+            "style",
+            "throwOnUnhandledVariable"
+          ],
+          "properties": {
+            "style": {
+              "type": "string",
+              "description": "The tag style to use for dry variables within environments",
+              "default": "<>",
+              "enum": [
+                "{}",
+                "[]",
+                "<>"
+              ]
+            },
+            "directoryVarStyle": {
+              "type": "string",
+              "description": "The tag style to use for directory variables within environments",
+              "default": "none",
+              "enum": [
+                "{}",
+                "[]",
+                "none",
+                "sameAsStyle"
+              ]
+            },
+            "throwOnUnhandledVariable": {
+              "type": "boolean",
+              "description": "Whether to throw an error if a parameter with variable tags is not handled",
+              "default": true
+            }
+          }
+        },
+        "environments": {
+          "type": "object",
+          "description": "The environments to deploy to",
+          "default": {},
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "reference": {
+                    "type": "string",
+                    "description": "The reference to the environment to use. If not specified, the environment will be used as the default environment",
+                    "pattern": "^[a-zA-Z0-9_.-]+[.](json|jsonc)$"
+                  }
+                }
+              },
+              {
+                "$ref": "#/definitions/Environments"
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
 }

@@ -1,226 +1,69 @@
-# Bolt
+
+# root
 
 type: `Object`  
-Configuration for bicep publish  
+Root schema for Bolt  
+**Properties**  
 
-**Properties**
+Name | Required | Type | Description | Link | Limitation
+--- | --- | --- | --- | --- | ---
+$schema |No |`String` |Schema to use for validation and autocomplete | |
+tenant |No |`String` |Tenant name or id | |
+bicep |No |`Object` |Bicep language configuration options |[Link](#bicep) |
+remote |No |`Array` |schema for remote items |[Link](#remote) |
+deploy |No |`None` |The schema for the bolt deploy config | |
 
-| Name |Required| Type | Description |Link |Limitation|
-|--|--|--|--|--|--|
-| bicepVersion | Yes | String | The required version of bicep. written as version (example: 1.0.1) |  | pattern: `\d+\.\d+\.\d+` |
-| registry | Yes | Object |  | [Link](#registry) |  |
-| module | Yes | Object | module configuration | [Link](#module) |  |
-| publish | Yes | Object |  | [Link](#publish) |  |
-
------
-
-## registry
+## bicep
 
 type: `Object`  
+Bicep language configuration options  
+**Properties**  
 
-**Properties**
+Name | Required | Type | Description | Link | Limitation
+--- | --- | --- | --- | --- | ---
+version |No |`String` |The version of the Bicep language to use. Defaults to latest. | |
 
-| Name |Required| Type | Description |Link |Limitation|
-|--|--|--|--|--|--|
-| name | Yes | String | name of container registy. url not needed |  |  |
-| subscriptionId | Yes | String | Subscription ID |  |  |
-| tenantId | Yes | String | Tenant ID of tenant domain |  |  |
-
------
-
-## module
-
-type: `Object`  
-module configuration  
-
-**Properties**
-
-| Name |Required| Type | Description |Link |Limitation|
-|--|--|--|--|--|--|
-| temp | No | String | where to store temporary files. default is 'bicepTemp'. path is relative to config file |  |  |
-| folder | Yes | String | Location of modules in relation to config file |  |  |
-| organisationStyle | Yes | Object | how modules are organised | [Link](#module.organisationStyle) |  |
-
------
-
-### module.organisationStyle
-
-type: `Object`  
-how modules are organised  
-
-**Properties**
-
-| Name |Required| Type | Description |Link |Limitation|
-|--|--|--|--|--|--|
-| type | Yes | String | the style of your module repository. SingleModuleFolder for a single module per folder (./mymodule/main.bicep) or MultiModuleFolder for multiple modules in a single folder (./mymodule.bicep) |  | enum: `SingleModuleFolder` |
-| filter | Yes | String | only deploy modules that match this filter. this is wildcard. if you have defined SingleModuleFolder type, this is used to define what that single module should be named. |  |  |
-| exclude | No | String | exclude modules that match this filter. this is wildcard. default is empty |  |  |
-
------
-
-## publish
-
-type: `Object`  
-
-**Properties**
-
-| Name |Required| Type | Description |Link |Limitation|
-|--|--|--|--|--|--|
-| releaseTrigger | Yes | Object | what should trigger a publish | [Link](#publish.releaseTrigger) | minProperties: `1` |
-| defaultRelease | Yes | String |  |  |  |
-| releases | Yes | Array |  | [Link](#publish.releases) | minItems: `1` |
-**Example**
-
-```json
-{
-  "releaseTrigger": {
-    "static": {
-      "update": [
-        "moduleModified"
-      ]
-    },
-    "semantic": {
-      "major": [
-        "paramAddedWithoutDefaultValue"
-      ],
-      "minor": [
-        "resourceAdded"
-      ],
-      "patch": [
-        "moduleModified"
-      ]
-    }
-  },
-  "defaultRelease": "dev",
-  "releases": [
-    {
-      "name": "dev",
-      "trigger": "static",
-      "value": "beta"
-    }
-  ]
-}
-```
-
-
------
-
-### publish.releaseTrigger
-
-type: `Object`  
-what should trigger a publish  
-
-**Properties**
-
-| Name |Required| Type | Description |Link |Limitation|
-|--|--|--|--|--|--|
-| static | No | Object |  | [Link](#publish.releaseTrigger.static) |  |
-| semantic | No | Object |  | [Link](#publish.releaseTrigger.semantic) |  |
-
------
-
-#### publish.releaseTrigger.static
-
-type: `Object`  
-
-**Properties**
-
-| Name |Required| Type | Description |Link |Limitation|
-|--|--|--|--|--|--|
-| update | No | Array |  | [Link](#publish.releaseTrigger.static.update) |  |
-
------
-
-##### publish.releaseTrigger.static.update
+## remote
 
 type: `Array`  
+schema for remote items  
+**can be any of the following types:**  
+  
 
-**Accepted Values**
+Name | Type | Description | Link
+--- | --- | --- | ---
+remote_acr |`Object` |Azure Container Registry options |[Link](#remoteitem)
 
-| Name |Required| Type | Description |Link |Limitation|
-|--|--|--|--|--|--|
-| item | No | String |  |  | enum: `paramCaseModified, paramAddedWithoutDefaultValue, paramRemoved, paramTypeModified, paramAllowedValueModified, paramDefaultValueModified, resourceAdded, resourceRemoved, resourceApiVersionModified, resourcePropertiesAdded, resourcePropertiesRemoved, resourcePropertiesModified, outputsAdded, outputsRemoved, outputsModified, moduleModified` |
+## deploy
 
------
+type: `object`  
+The schema for the bolt deploy config  
+**Properties**  
 
-#### publish.releaseTrigger.semantic
+Name | Required | Type | Description | Link | Limitation
+--- | --- | --- | --- | --- | ---
+deployFromLocation |Yes |`String` |The location to deploy from | |enum: `eastus` `eastus2` `southcentralus` `westus2` `westus3` `australiaeast` `southeastasia` `northeurope` `swedencentral` `uksouth` `westeurope` `centralus` `southafricanorth` `centralindia` `eastasia` `japaneast` `koreacentral` `canadacentral` `francecentral` `germanywestcentral` `italynorth` `norwayeast` `polandcentral` `switzerlandnorth` `uaenorth` `brazilsouth` `centraluseuap` `israelcentral` `qatarcentral` `asia` `asiapacific` `australia` `brazil` `canada` `europe` `france` `germany` `global` `india` `japan` `korea` `norway` `singapore` `southafrica` `switzerland` `unitedstates` `northcentralus` `westus` `eastus2euap` `westcentralus` `southafricawest` `australiacentral` `australiacentral2` `australiasoutheast` `japanwest` `koreasouth` `southindia` `westindia` `canadaeast` `francesouth` `germanynorth` `norwaywest` `switzerlandwest` `ukwest` `uaecentral` `brazilsoutheast`
+varHandling |Yes |`Object` |Settings for variable handling when running bolt deploy |[Link](#deployvarhandling) |
+environments |Yes |`Object` |The environments to deploy to |[Link](#deployenvironments) |
 
-type: `Object`  
-
-**Properties**
-
-| Name |Required| Type | Description |Link |Limitation|
-|--|--|--|--|--|--|
-| major | No | Array |  | [Link](#publish.releaseTrigger.semantic.major) |  |
-| minor | No | Array |  | [Link](#publish.releaseTrigger.semantic.minor) |  |
-| patch | No | Array |  | [Link](#publish.releaseTrigger.semantic.patch) |  |
-
------
-
-##### publish.releaseTrigger.semantic.major
-
-type: `Array`  
-
-**Accepted Values**
-
-| Name |Required| Type | Description |Link |Limitation|
-|--|--|--|--|--|--|
-| item | No | String |  |  | enum: `paramCaseModified, paramAddedWithoutDefaultValue, paramRemoved, paramTypeModified, paramAllowedValueModified, paramDefaultValueModified, resourceAdded, resourceRemoved, resourceApiVersionModified, resourcePropertiesAdded, resourcePropertiesRemoved, resourcePropertiesModified, outputsAdded, outputsRemoved, outputsModified, moduleModified` |
-
------
-
-##### publish.releaseTrigger.semantic.minor
-
-type: `Array`  
-
-**Accepted Values**
-
-| Name |Required| Type | Description |Link |Limitation|
-|--|--|--|--|--|--|
-| item | No | String |  |  | enum: `paramCaseModified, paramAddedWithoutDefaultValue, paramRemoved, paramTypeModified, paramAllowedValueModified, paramDefaultValueModified, resourceAdded, resourceRemoved, resourceApiVersionModified, resourcePropertiesAdded, resourcePropertiesRemoved, resourcePropertiesModified, outputsAdded, outputsRemoved, outputsModified, moduleModified` |
-
------
-
-##### publish.releaseTrigger.semantic.patch
-
-type: `Array`  
-
-**Accepted Values**
-
-| Name |Required| Type | Description |Link |Limitation|
-|--|--|--|--|--|--|
-| item | No | String |  |  | enum: `paramCaseModified, paramAddedWithoutDefaultValue, paramRemoved, paramTypeModified, paramAllowedValueModified, paramDefaultValueModified, resourceAdded, resourceRemoved, resourceApiVersionModified, resourcePropertiesAdded, resourcePropertiesRemoved, resourcePropertiesModified, outputsAdded, outputsRemoved, outputsModified, moduleModified` |
-
------
-
-### publish.releases
-
-type: `Array`  
-
-**Accepted Values**
-
-| Name |Required| Type | Description |Link |Limitation|
-|--|--|--|--|--|--|
-| item | No | Object |  | [Link](#publish.releases.item) |  |
-
------
-
-#### publish.releases.item
+### deploy.varHandling
 
 type: `Object`  
+Settings for variable handling when running bolt deploy  
+**Properties**  
 
-**Properties**
+Name | Required | Type | Description | Link | Limitation
+--- | --- | --- | --- | --- | ---
+style |Yes |`String` |The tag style to use for dry variables within environments | |enum: `{}` `[]` `<>`
+directoryVarStyle |No |`String` |The tag style to use for directory variables within environments | |enum: `{}` `[]` `none` `sameAsStyle`
+throwOnUnhandledVariable |Yes |`Boolean` |Whether to throw an error if a parameter with variable tags is not handled | |
 
-| Name |Required| Type | Description |Link |Limitation|
-|--|--|--|--|--|--|
-| name | No | String |  |  |  |
-| trigger | No | String |  |  | enum: `static, semantic` |
-| value | No | String | will be used as the value when released. ignored for semantic version |  |  |
-| prefix | No | String | will be used as the prefix when released. version '1.2.3' would be 'v1.2.3' if prefix is 'v' |  |  |
+### deploy.environments
 
------
+type: `Object`  
+The environments to deploy to  
+**Properties**  
 
-
------
-
-This markdown was automactially generated from the schema file. it may not be 100% correct. please 
+Name | Required | Type | Description | Link | Limitation
+--- | --- | --- | --- | --- | ---
+  

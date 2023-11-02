@@ -1,0 +1,87 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "remote registry schema",
+    "description": "schema for remote items",
+    "type": "array",
+    "items": {
+        "anyOf": [
+            {
+                "$ref": "#/definitions/remote_acr"
+            }
+            // {
+            //     "$ref": "#/definitions/remote_github"
+            // }
+            //,
+            // {
+            //     "$ref": "#/definitions/remote_gitSparse"
+            // }
+        ]
+    },
+    "definitions": {
+        "remote_acr": {
+            "title": "remote acr item",
+            "description": "Azure Container Registry options",
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "enum": [
+                        "acr"
+                    ]
+                },
+                "tenant": {
+                    "oneOf": [
+                        {
+                            "type": "string",
+                            "enum": [
+                                "configTenant"
+                            ]
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ]
+                },
+                "subscription": {
+                    "type": "string"
+                },
+                "resourceGroup": {
+                    "type": "string"
+                },
+                "registry": {
+                    "type": "string"
+                }
+            }
+        },
+        "remote_github": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "enum": [
+                        "github"
+                    ]
+                },
+                "owner": {
+                    "type": "string"
+                },
+                "repo": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "ref": {
+                    "type": "string"
+                }
+            },
+            "examples": [{
+                "type": "github",
+                "owner": "Azure",
+                "repo": "bicep-registry-modules",
+                "path": "modules",
+                "ref": "master"
+            }]
+        }
+    }
+}
