@@ -123,8 +123,8 @@ $interface = @{
             run = {cmdlet info for Invoke-DeployVariable:static}
         }
         keyvault = @{
-            init = {cmdlet info for New-DeployVariable:static}
-            run = {cmdlet info for Invoke-DeployVariable:static}
+            init = {cmdlet info for New-DeployVariable:keyvault}
+            run = {cmdlet info for Invoke-DeployVariable:keyvault}
         }
     }
 }
