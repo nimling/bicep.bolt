@@ -139,4 +139,22 @@ $someparam = @{
 Invoke-BoltInterface -scope 'deployVar' -implement 'static' -command 'run' -params $someparam
 ```
 
+this again could be combined with some sort of validate-set or known list of implementations to make it easier to use:
 
+``` powershell	
+param(
+    [ValidateSet('static','keyvault')]
+    [string]$implement
+)
+$someparam = @{
+    myvar = 'somevalue'
+}
+
+#init the var
+Invoke-BoltInterface -scope 'deployVar' -implement $implement -command 'init' -params $someparam
+
+#run the var for more info
+Invoke-BoltInterface -scope 'deployVar' -implement $implement -command 'run' -params $someparam
+```
+
+atleast in bolt's case it would mean i can define more variables without having to go into core and add a bunch of code. i can just add a new function and it would be picked up by the interface.
