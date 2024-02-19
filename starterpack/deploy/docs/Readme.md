@@ -5,7 +5,7 @@ this version handles all the requests suncronously, and is slower than i like. T
 please contact me ([philip@nimtech](mailto:Philip@nimtech.no)) or write a issue here if you want to contribute.
 
 # Bicep Arm Deployment Utility (BADU)
-----
+---
 
 BADU makes Bicep deployment easy by providing a clear and intuitive folder structure.  
 Instead of specifying a configuration file to define the context for a deployment, BAD uses folders to achieve the same result:
