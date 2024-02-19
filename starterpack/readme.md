@@ -14,4 +14,4 @@ they will both be rewritten in GO for better performance and to make it easier t
 
 "deploy" is a honestly new and refreshing way to handle deployments. It uses bicep language, but you dont have to write huge files per deployment anymore! you have to put the files in the correct folder, run "deploy {yourenvironment}" and it will deploy the files in the correct order!
 
-read the [deploy docs](./deploy/docs/Basics.md) for more info.
+read the [deploy docs](./deploy/docs/readme.md) for more info.
