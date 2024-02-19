@@ -1,0 +1,228 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema",
+    "type": "object",
+    "properties": {
+        "$schema": {
+            "type": "string",
+            "description": "The schema to use"
+        },
+        "tenant": {
+            "type": "string",
+            "description": "The tenant name"
+        },
+        "deployLocation": {
+            "type": "string",
+            "description": "The location to deploy to"
+        },
+        "workflow": {
+            "type": "object",
+            "properties": {
+                "deployoutput": {
+                    "type": "object",
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean"
+                        },
+                        "style": {
+                            "enum": [
+                                "json",
+                                "object"
+                            ],
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "bicep": {
+            "type": "object",
+            "properties": {
+                "minimumVersion": {
+                    "type": "string",
+                    "description": "The minimum version of bicep to use",
+                    "enum": [
+                        "latest",
+                        "0.10.2",
+                        "0.10.13",
+                        "0.10.61",
+                        "0.11.1",
+                        "0.12.1",
+                        "0.12.40",
+                        "0.13.1",
+                        "0.14.6",
+                        "0.14.46",
+                        "0.14.85",
+                        "0.15.31",
+                        "0.16.1",
+                        "0.16.2"
+                    ]
+                }
+            }
+        },
+        "dry": {
+            "type": "object",
+            "properties": {
+                "style": {
+                    "type": "string",
+                    "description": "The tag style to use for dry variables within environments",
+                    "enum": [
+                        "{}",
+                        "[]",
+                        "<>"
+                    ]
+                },
+                "throwOnUnhandledParameter": {
+                    "type": "boolean",
+                    "description": "Whether to throw an error if a parameter with dry tags is not handled"
+                }
+            }
+        },
+        "environments": {
+            "type": "array",
+            "description": "The environments to deploy to",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "The name of the environment"
+                    },
+                    "isScoped": {
+                        "type": "boolean",
+                        "description": "Whether the environment is scoped. scoped environment needs to be called, specifically at the start of script, non-scoped is always present"
+                    },
+                    "variables": {
+                        "type": "object",
+                        "description": "The variables to set in the environment",
+                        "additionalProperties": {
+                            "oneOf": [
+                                {
+                                    "$ref": "#/definitions/variable_static"
+                                },
+                                {
+                                    "$ref": "#/definitions/variable_keyvault"
+                                },
+                                {
+                                    "$ref": "#/definitions/variable_identity"
+                                }
+                            ]
+                        }
+                    }
+                },
+                "additionalProperties": false
+            }
+        },
+        "dev": {
+            "description": "options for when you are actively developing this framework",
+            "type": "object",
+            "properties": {
+                "ignoreinstance": {
+                    "description": "ignore the instance check of the deploy configuration when running code. instance is used when hanlding the config-singleton, making sure that the config initialized within the same callstack is the same one that is used throughout the rest of the code",
+                    "type": "boolean",
+                    "default": false
+                },
+                "enabled": {
+                    "description": "whether dev mode is enabled",
+                    "type": "boolean",
+                    "default": false
+                }
+            }
+        }
+    },
+    "required": [
+        "tenant",
+        "deployLocation",
+        "environments",
+        "dry"
+    ],
+    "additionalProperties": false,
+    "definitions": {
+        "variable_static":{
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "enum": [
+                        "static"
+                    ]
+                },
+                "description": {
+                    "type": "string",
+                    "description": "The description of the variable"
+                },
+                "value": {
+                    "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null",
+                        "array",
+                        "object"
+                    ],
+                    "description": "The value of the replacement"
+                }
+            },
+            "required": [
+                "type",
+                "value"
+            ]
+        },
+        "variable_keyvault":{
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "enum": [
+                        "keyvault"
+                    ]
+                },
+                "description": {
+                    "type": "string",
+                    "description": "The description of the variable"
+                },
+                "vault": {
+                    "type": "string",
+                    "description": "The name of the vault to use. supports usage of variables"
+                },
+                "secret": {
+                    "type": "string",
+                    "description": "The name of the secret to use. supports usage of variables"
+                },
+                "version": {
+                    "type": "string",
+                    "description": "The version of the secret to use. If not specified, the latest version will be used"
+                }
+            },
+            "required": [
+                "type",
+                "vault",
+                "secret"
+            ]
+        },
+        "variable_identity":{
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "enum": [
+                        "identity"
+                    ]
+                },
+                "description": {
+                    "type": "string",
+                    "description": "The description of the variable"
+                },
+                "value":{
+                    "type":"string",
+                    "enum": [
+                        "principalId",
+                        "name",
+                        "type",
+                        "ip"
+                    ]
+                }
+            },
+            "required": [
+                "type",
+                "value"
+            ]
+        }
+    }
+}

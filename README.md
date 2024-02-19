@@ -3,6 +3,10 @@
 Everything you need to manage your bicep modules to azure container registry.  
 Upload multiple bicep modules at the same time with automatic verisioning!
 
+NEWS! BOLT IS NO LONGER JUST A PUBLISHING TOOL!
+read more about the new deployment tool [here](./starterpack/readme.md)
+
+
 ---
 
 ## What is Bolt?

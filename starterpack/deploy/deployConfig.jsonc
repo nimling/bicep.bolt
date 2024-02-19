@@ -1,0 +1,26 @@
+{
+    "$schema": "./deployconfig.schema.json",
+    "tenant": "mytenant.com",
+    "deployLocation": "NorwayEast",
+    "bicep": {
+        "minimumVersion": "latest"
+    },
+    "dry": {
+        "style": "<>",
+        "throwOnUnhandledParameter": true
+    },
+    "workflow": {},
+    "environments": [
+        // shared
+        {
+            "isScoped": false,
+            "name": "shared",
+            "variables": {
+                "location":{
+                    "type": "static",
+                    "value": "norwayeast"
+                }
+            }
+        }
+    ]
+}
